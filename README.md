@@ -1,17 +1,17 @@
 # Metis · 墨提斯
 
-Metis 用来训练面向具体任务的模型。项目从 decoder-only 列排序开始，围绕打分、排序、选择和分类等任务，提供训练、评测、导出与调用流程。
+Metis 是一个任务专用后训练工具包。项目从 decoder-only 列排序开始，面向打分、排序、选择和分类等有明确输入与评价方式的任务。训练好的模型直接返回分数、类别或候选 ID，供程序和 Agent workflow 调用。
 
-目前主要基于 Qwen3：可以在 Base 模型上训练独立的 ScoreHead，也可以使用 Reranker 的 yes/no 读出。Python 包和命令行目前仍使用 cometa 这个名字。
+目前主要适配 Qwen3：Base 模型可以接独立 ScoreHead，Reranker 则沿用 yes/no 读出。Python 包和命令行目前仍叫 cometa。
 
 ## 能做什么
 
-- 用 full fine-tuning 或 LoRA 训练模型，并根据 validation 指标选择结果。
-- 使用 pairs 或 dense tree 输入；支持 eager 和 SDPA。当前 tree 是用于核对结果的参考实现，还没有稀疏加速。
+- 用 full fine-tuning 或 LoRA 训练模型，再按 validation 指标选择 checkpoint。
+- 使用 pairs 或 dense tree 输入，支持 eager 和 SDPA。当前 tree 使用 dense mask，主要用于核对计算语义，还没有稀疏加速。
 - 保存和加载训练产物，通过 Predictor 或开发用 HTTP 接口调用。
 - 参考 NFCorpus 配方完成训练、评测，并将模型接入 Agent workflow。
 
-通用任务与模型注册、稀疏 attention、强化学习和多卡训练还没有实现。
+通用任务与模型注册接口、稀疏 attention、强化学习和多卡训练目前还没有实现。
 
 ## NFCorpus 首轮结果
 
@@ -22,7 +22,7 @@ Metis 用来训练面向具体任务的模型。项目从 decoder-only 列排序
 | Qwen3-Reranker-0.6B | 0.3548 |
 | Qwen3-0.6B-Base + ScoreHead + LoRA | 0.2910 |
 
-ScoreHead 这次没有超过 reranker。两边的读出、输入模板和训练经历不同，因此这组结果记录的是当前方案表现，不是单变量消融。
+ScoreHead 这次没有超过 reranker。两边使用不同的读出、输入模板和训练设置，这组分数只能作为当前方案的阶段性对比。
 
 ## 安装
 
