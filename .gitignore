@@ -1,0 +1,29 @@
+# Python environments and generated build files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+.coverage
+htmlcov/
+
+# Local datasets, runs and evidence (also match symlinks)
+/data
+/runs
+/reports
+/artifacts
+/logs
+/.cometa
+/.local
+/workspace.local.json
+
+# Machine and editor state
+/.agents
+/.codex
+.env
+.env.*
+!.env.example
+.DS_Store

@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "task": {
+    "kind": "ranking"
+  },
+  "model": {
+    "adapter": "qwen3_score_head",
+    "name_or_path": "../../data/models/Qwen3-0.6B-Base",
+    "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+    "head_hidden_size": 256,
+    "layout": "pairs",
+    "backend": "sdpa",
+    "device": "cuda",
+    "dtype": "float32",
+    "max_length": 2048,
+    "max_tree_tokens": 4096,
+    "pair_batch_size": 4
+  },
+  "data": {
+    "manifest": "../../data/nfcorpus-bm25/manifest.json",
+    "train_split": "train",
+    "validation_split": "validation",
+    "train_candidate_sampling": {
+      "enabled": true,
+      "max_candidates": 8,
+      "max_positives": 2,
+      "seed": 42
+    }
+  },
+  "training": {
+    "epochs": 2,
+    "learning_rate": 2e-05,
+    "head_learning_rate": 0.001,
+    "precision": "bf16",
+    "batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "seed": 42,
+    "save_steps": 324,
+    "tuning": "lora",
+    "gradient_checkpointing": true,
+    "warmup_ratio": 0.05,
+    "weight_decay": 0.01,
+    "lora": {
+      "r": 8,
+      "alpha": 16,
+      "dropout": 0.0
+    },
+    "selection": {
+      "enabled": true,
+      "metric": "ndcg@10",
+      "evaluate_initial": true
+    }
+  },
+  "objective": {
+    "bce_weight": 0.1,
+    "pairwise_weight": 1.0
+  },
+  "output": {
+    "root": "../../runs",
+    "project": "nfcorpus-score-head"
+  }
+}

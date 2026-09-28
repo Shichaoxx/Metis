@@ -1,0 +1,9 @@
+# Tested on Python 3.12.13, CPU float32. Not a cross-platform lockfile.
+torch==2.10.0
+transformers==4.57.6
+accelerate==1.15.0
+peft==0.21.0
+pytest==9.1.1
+safetensors==0.8.0
+tokenizers==0.22.2
+huggingface-hub==0.36.2
