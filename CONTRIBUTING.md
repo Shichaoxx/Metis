@@ -1,18 +1,24 @@
-# 参与 Metis 开发
+# 参与开发
 
-Metis 使用 Python src 布局。包与 CLI 名称为 cometa。
+欢迎提交问题反馈和代码改进。开始前，可以先从 README 和相关模块文档了解项目结构。
 
 ## 开发环境
 
-Python 3.10+。核心数据和配置接口不依赖 Torch；模型训练与推理需要 train，LoRA 需要 peft，pytest 需要 test。
+需要 Python 3.10 或更新版本：
 
-在虚拟环境中执行：python -m pip install -e '.[train,peft,test]'，然后运行 python scripts/check_repository.py 和 pytest -q。
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[train,peft,test]"
+```
 
-## 代码与文档
+## 检查改动
 
-- 可复用实现放在 src/cometa/，示例放在 examples/，配置放在 recipes/，任务协议放在 cookbooks/。
-- 数据、模型权重、checkpoint 和运行日志不得提交到源码仓库。
-- 保留 ACKNOWLEDGEMENTS.md 中的来源说明，不复制企业数据、代码或第三方课件。
-- 新能力应明确实现状态、验证范围和未覆盖边界；tiny 测试不代表真实任务质量。
+```bash
+python scripts/check_repository.py
+pytest -q
+```
 
-请在 pull request 中说明问题、行为变化、验证命令和风险边界。
+运行库位于 src/cometa，调用示例在 examples，训练配置在 recipes，任务流程和评测说明在 cookbooks。数据集缓存、模型权重、checkpoint 和运行日志不要提交到仓库。
+
+提交改动时，请说明改了什么、如何验证，并保留 ACKNOWLEDGEMENTS.md 中的来源说明。不要提交企业代码、业务数据或未经许可的第三方课件。
