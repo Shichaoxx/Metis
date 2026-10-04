@@ -163,7 +163,7 @@ def compare(baseline_directory, candidate_directory, *, seed=42, resamples=10_00
     metric_table = {key: {"baseline": baseline["metrics"][key], "candidate": candidate["metrics"][key],
                           "delta": candidate["metrics"][key] - baseline["metrics"][key]} for key in METRICS}
     return {
-        "created_at": datetime.now(timezone.utc).isoformat(), "comparison_version": "cometa-paired-comparison-v1",
+        "created_at": datetime.now(timezone.utc).isoformat(), "comparison_version": "metis-paired-comparison-v1",
         "scope": "full_split", "dataset_id": right["dataset_id"], "split": right["split"], "queries": len(query_ids),
         "protocol_checks": {key: right[key] for key in keys if key != "sample_ids"},
         "scope_evidence": scope_evidence,

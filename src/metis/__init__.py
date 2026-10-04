@@ -1,4 +1,4 @@
-"""Cometa: a local, task-specific decision model post-training prototype.
+"""Metis: a local, task-specific decision model post-training prototype.
 
 Importing the package does not import torch, Transformers or download anything.
 """

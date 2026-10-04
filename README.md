@@ -2,7 +2,7 @@
 
 Metis 是一个任务专用后训练工具包。项目从 decoder-only 列排序开始，面向打分、排序、选择和分类等有明确输入与评价方式的任务。训练好的模型直接返回分数、类别或候选 ID，供程序和 Agent workflow 调用。
 
-目前主要适配 Qwen3：Base 模型可以接独立 ScoreHead，Reranker 则沿用 yes/no 读出。Python 包和命令行目前仍叫 cometa。
+目前主要适配 Qwen3：Base 模型可以接独立 ScoreHead，Reranker 则沿用 yes/no 读出。Python 包和命令行统一使用 `metis`。
 
 ## 能做什么
 
@@ -32,13 +32,13 @@ ScoreHead 这次没有超过 reranker。两边使用不同的读出、输入模�
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[train,peft]"
-cometa --help
+metis --help
 ```
 
 ## 调用模型
 
 ```python
-from cometa import Predictor
+from metis import Predictor
 
 predictor = Predictor("path/to/run/exports/best")
 results = predictor.predict(samples, top_k=5)

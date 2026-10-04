@@ -2,7 +2,7 @@
 
 **模型读完 query 和一个候选，直接给出一个可训练的相关性分数。** 这个分数可以用于列排序、候选选择或下游 workflow；整个路径不调用 `generate()`，不要求模型输出自然语言，也不依赖 yes/no 词表读出。
 
-本文对应 Metis 新增的 `qwen3_score_head` 适配器。项目目标见 [CORE](../project/core.md)，实现见 [模型](../../src/cometa/model.py)、[输入编译](../../src/cometa/compiler.py) 和 [模型工厂](../../src/cometa/model_registry.py)。Tree Mask 与张量化讲解受到五道口纳什教学资料启发，来源及边界见 [ACKNOWLEDGEMENTS](../../ACKNOWLEDGEMENTS.md)。
+本文对应 Metis 新增的 `qwen3_score_head` 适配器。项目目标见 [CORE](../project/core.md)，实现见 [模型](../../src/metis/model.py)、[输入编译](../../src/metis/compiler.py) 和 [模型工厂](../../src/metis/model_registry.py)。Tree Mask 与张量化讲解受到五道口纳什教学资料启发，来源及边界见 [ACKNOWLEDGEMENTS](../../ACKNOWLEDGEMENTS.md)。
 
 ## 一次前向，三个张量
 
@@ -43,7 +43,7 @@ s_i=W_2\operatorname{GELU}(W_1h_i+b_1)+b_2.
 
 ## 读出放在候选之后
 
-[ScoreHeadCompiler](../../src/cometa/compiler.py)使用普通 relevance 模板。下例仅展示模板结构：
+[ScoreHeadCompiler](../../src/metis/compiler.py)使用普通 relevance 模板。下例仅展示模板结构：
 
 ```text
 <Task>: Estimate candidate relevance.

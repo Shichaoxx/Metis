@@ -1,9 +1,33 @@
-include README.md CONTRIBUTING.md ACKNOWLEDGEMENTS.md constraints-tested.txt
+include README.md CONTRIBUTING.md ACKNOWLEDGEMENTS.md
+include constraints-tested.txt
 recursive-include src *.py
 recursive-include tests *.py *.md
 recursive-include examples *.py *.md
 recursive-include recipes *.json *.md
 recursive-include cookbooks *.md
-recursive-include docs *.md
+recursive-include docs/architecture *.md
+recursive-include docs/development *.md
+recursive-include docs/learning *.md
+recursive-include docs/project *.md
+recursive-include docs/research *.md
+recursive-include docs/usage *.md
 recursive-include scripts *.py
+prune docs/history
+prune docs/operations
+prune data
+prune runs
+prune reports
+prune artifacts
+prune logs
+prune .local
+prune .metis
+prune .cometa
+prune .git
+prune .agents
+prune .codex
+prune ops
+prune .venv
+prune build
+prune dist
+exclude workspace.local.json
 global-exclude *.py[cod] .DS_Store

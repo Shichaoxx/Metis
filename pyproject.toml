@@ -3,12 +3,11 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cometa-local"
+name = "metis"
 version = "0.1.0.dev0"
 description = "Prototype toolkit for task-specific model post-training"
 readme = "README.md"
 requires-python = ">=3.10"
-
 dependencies = []
 
 [project.optional-dependencies]
@@ -18,7 +17,7 @@ test = ["pytest>=8"]
 docs = ["reportlab>=4", "pypdf>=5", "numpy>=1.26", "Pillow>=10"]
 
 [project.scripts]
-cometa = "cometa.cli:main"
+metis = "metis.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

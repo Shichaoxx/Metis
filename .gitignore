@@ -16,6 +16,7 @@ htmlcov/
 /reports
 /artifacts
 /logs
+/.metis
 /.cometa
 /.local
 /workspace.local.json

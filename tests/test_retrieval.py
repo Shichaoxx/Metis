@@ -14,7 +14,7 @@ HAS_TORCH = importlib.util.find_spec("torch") is not None
 class DenseRetrievalTests(unittest.TestCase):
     def test_last_token_pool_handles_both_padding_sides(self):
         import torch
-        from cometa.benchmarks.retrieval import last_token_pool
+        from metis.benchmarks.retrieval import last_token_pool
         hidden = torch.arange(12).reshape(2, 3, 2).float()
         mask = torch.tensor([[0, 1, 1], [1, 1, 0]])
         pooled = last_token_pool(hidden, mask)
@@ -24,7 +24,7 @@ class DenseRetrievalTests(unittest.TestCase):
 
     def test_fake_embeddings_produce_frozen_normalized_cosine_run(self):
         import torch
-        from cometa.benchmarks.retrieval import write_dense_run
+        from metis.benchmarks.retrieval import write_dense_run
 
         class Tokenizer:
             def __call__(self, texts, **kwargs):

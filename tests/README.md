@@ -1,6 +1,6 @@
 # 测试索引
 
-这里验证 `cometa` 的软件契约。所有模型 fixture 均为本地构造的 tiny 或替身模型；测试不需要预训练权重、下载数据或 GPU。运行命令与结果记录约定见 [测试指南](../docs/development/testing.md)。
+这里验证 `metis` 的软件契约。所有模型 fixture 均为本地构造的 tiny 或替身模型；测试不需要预训练权重、下载数据或 GPU。运行命令与结果记录约定见 [测试指南](../docs/development/testing.md)。
 
 | 文件 | 关注的行为 |
 |---|---|

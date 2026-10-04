@@ -1,6 +1,6 @@
 """Expose a local decision artifact as a structured tool for an agent harness.
 
-Run with a sealed Cometa artifact, without agent API credentials or a server:
+Run with a sealed Metis artifact, without agent API credentials or a server:
     python examples/agent_tool.py --artifact /path/to/export --demo columns
 Print only the tool contract (no model needed):
     python examples/agent_tool.py --show-schema
@@ -40,7 +40,7 @@ class DecisionTool:
     """Load once at harness startup, then call with query + bounded candidates."""
 
     def __init__(self, artifact, *, device="cpu", dtype="float32"):
-        from cometa.api import Predictor
+        from metis.api import Predictor
         self.predictor = Predictor(artifact, device=device, dtype=dtype)
 
     def rank_candidates(self, query, candidates, *, context="", top_k=3, request_id=None):

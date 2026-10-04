@@ -28,7 +28,7 @@ class Registry:
 
 
 class DatasetRegistry:
-    def __init__(self, path=".cometa/datasets.json"):
+    def __init__(self, path=".metis/datasets.json"):
         self.path = Path(path).resolve()
 
     def entries(self):

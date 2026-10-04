@@ -1,6 +1,6 @@
 # Metis 当前状态
 
-Metis 是面向任务专用模型的 SystemOne 后训练工具包原型。包名和 CLI 仍为 cometa。首个完整案例使用 NFCorpus，工具包目标不限于检索排序。
+Metis 是面向任务专用模型的 SystemOne 后训练工具包原型。包名和 CLI 仍为 metis。首个完整案例使用 NFCorpus，工具包目标不限于检索排序。
 
 ## 已完成
 

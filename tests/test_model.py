@@ -5,7 +5,7 @@ import pytest
 
 torch = pytest.importorskip('torch')
 pytest.importorskip('transformers')
-from cometa.model import QwenReranker
+from metis.model import QwenReranker
 
 fixture_spec = importlib.util.spec_from_file_location('smoke_fixture', Path(__file__).parents[1] / 'examples/smoke_train.py')
 fixture = importlib.util.module_from_spec(fixture_spec)
@@ -121,7 +121,7 @@ def test_existing_lm_head_rows_receive_gradients():
 
 
 def test_compiled_pairs_match_model_card_template():
-    from cometa.compiler import SYSTEM_PREFIX, ASSISTANT_SUFFIX, DEFAULT_INSTRUCTION
+    from metis.compiler import SYSTEM_PREFIX, ASSISTANT_SUFFIX, DEFAULT_INSTRUCTION
     pair, _ = models()
     sample = fixture.sample_records()[0]
     expected = []
@@ -145,7 +145,7 @@ def test_invalid_pair_batch_size(batch_size):
 
 def test_registry_loads_legacy_yesno_artifacts(tmp_path):
     import json
-    from cometa.model_registry import load_model
+    from metis.model_registry import load_model
     pair, _ = models()
     destination = pair.save(tmp_path / 'legacy-export')
     path = destination / 'model_spec.json'

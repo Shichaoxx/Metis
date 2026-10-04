@@ -26,13 +26,13 @@ import time
 import traceback
 import uuid
 
-import cometa
-from cometa.api import decide
-from cometa.artifacts import environment, write_json
-from cometa.metrics import aggregate, load_qrels, ranking_metrics
-from cometa.schema import load_manifest, read_jsonl, sha256
+import metis
+from metis.api import decide
+from metis.artifacts import environment, write_json
+from metis.metrics import aggregate, load_qrels, ranking_metrics
+from metis.schema import load_manifest, read_jsonl, sha256
 
-VERSION = "cometa-real-eval-v1"
+VERSION = "metis-real-eval-v1"
 
 
 def now():
@@ -90,7 +90,7 @@ def local_model_identity(path):
 
 
 def source_identity():
-    root = Path(cometa.__file__).resolve().parent
+    root = Path(metis.__file__).resolve().parent
     return {str(path.relative_to(root)): sha256(path) for path in sorted(root.rglob("*.py"))}
 
 
@@ -197,7 +197,7 @@ def finish(output, protocol, records, target_samples, qrels, k):
 
 def run(args):
     import torch
-    from cometa.model import QwenReranker
+    from metis.model import QwenReranker
     if args.split == "train":
         raise ValueError("Use a held-out split; train candidates may contain gold injection")
     if args.k < 1 or args.threads < 1 or args.warmup_queries < 0 or (args.limit is not None and args.limit < 1):
@@ -227,7 +227,7 @@ def run(args):
     contract = {"version": VERSION, "manifest_sha256": manifest["_manifest_sha256"],
         "split": args.split, "split_sha256": spec["sha256"], "qrels_sha256": sha256(spec["qrels_path"]),
         "sample_ids": query_ids, "model": model_identity, "parameters": parameters,
-        "runner_sha256": sha256(Path(__file__)), "cometa_source_sha256": source_identity(),
+        "runner_sha256": sha256(Path(__file__)), "metis_source_sha256": source_identity(),
         "environment": environment(), "device_identity": device_identity(torch, args.device),
         "float32_matmul_precision": torch.get_float32_matmul_precision(),
         "cuda_matmul_allow_tf32": bool(torch.backends.cuda.matmul.allow_tf32)}

@@ -194,7 +194,7 @@ def _serve(args):
 
 
 def parser():
-    p = argparse.ArgumentParser(prog="cometa", description="Local task-specific decision model kit")
+    p = argparse.ArgumentParser(prog="metis", description="Local task-specific decision model kit")
     sub = p.add_subparsers(dest="command", required=True)
     prepare = sub.add_parser("prepare-nfcorpus")
     prepare.add_argument("--data-dir", required=True)
@@ -213,17 +213,17 @@ def parser():
     ds = sub.add_parser("dataset").add_subparsers(dest="action", required=True)
     reg = ds.add_parser("register")
     reg.add_argument("name"); reg.add_argument("manifest")
-    reg.add_argument("--registry", default=".cometa/datasets.json")
+    reg.add_argument("--registry", default=".metis/datasets.json")
     reg.add_argument("--replace", action="store_true")
     listing = ds.add_parser("list")
-    listing.add_argument("--registry", default=".cometa/datasets.json")
+    listing.add_argument("--registry", default=".metis/datasets.json")
     val = sub.add_parser("validate"); val.add_argument("manifest")
-    val.add_argument("--registry", default=".cometa/datasets.json")
+    val.add_argument("--registry", default=".metis/datasets.json")
     train = sub.add_parser("train"); train.add_argument("config")
     train.add_argument("--resume", default=None)
     ev = sub.add_parser("evaluate")
     ev.add_argument("--manifest", required=True); ev.add_argument("--split", default="test")
-    ev.add_argument("--registry", default=".cometa/datasets.json")
+    ev.add_argument("--registry", default=".metis/datasets.json")
     ev.add_argument("--output", required=True); ev.add_argument("--limit", type=int)
     ev.add_argument("--k", type=int, default=10)
     modes = ev.add_mutually_exclusive_group(required=True)
@@ -315,7 +315,7 @@ def main(argv=None):
         _json_print(result)
         return 0
     except Exception as exc:
-        print(f"cometa: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(f"metis: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 
 

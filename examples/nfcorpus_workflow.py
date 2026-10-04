@@ -11,8 +11,8 @@ import json
 from pathlib import Path
 
 from agent_tool import DecisionTool
-from cometa.artifacts import write_json
-from cometa.schema import load_manifest, read_jsonl
+from metis.artifacts import write_json
+from metis.schema import load_manifest, read_jsonl
 
 
 def main():

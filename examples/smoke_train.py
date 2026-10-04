@@ -1,8 +1,8 @@
 """Tiny random Qwen3 CPU smoke; downloads no pretrained weights or dataset.
 
 After installing the package, run:
-    python examples/smoke_train.py --output /tmp/cometa-smoke
-Or from the repository: PYTHONPATH=src python examples/smoke_train.py --output /tmp/cometa-smoke
+    python examples/smoke_train.py --output /tmp/metis-smoke
+Or from the repository: PYTHONPATH=src python examples/smoke_train.py --output /tmp/metis-smoke
 The tiny model checks software behavior, never retrieval quality.
 """
 from __future__ import annotations
@@ -60,9 +60,9 @@ def make_fixture(directory):
 
 def run_smoke(output):
     import torch
-    from cometa.training import train
-    from cometa.artifacts import seal_artifact
-    from cometa.api import Predictor
+    from metis.training import train
+    from metis.artifacts import seal_artifact
+    from metis.api import Predictor
     output = Path(output)
     torch.set_num_threads(1)
     config = make_fixture(output)

@@ -17,8 +17,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from cometa.cli import main, parser
-from cometa.schema import sha256, write_jsonl
+from metis.cli import main, parser
+from metis.schema import sha256, write_jsonl
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -27,7 +27,7 @@ HAS_MODEL_DEPS = all(importlib.util.find_spec(package) is not None
 
 
 def load_example(name):
-    spec = importlib.util.spec_from_file_location(f"cometa_test_{name}", REPOSITORY / "examples" / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"metis_test_{name}", REPOSITORY / "examples" / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -111,7 +111,7 @@ class CLIDataTests(CLIAssertions):
                                    "--model", "local-embedder", "--revision", "pinned", "--top-k", "100",
                                    "--batch-size", "4", "--max-length", "2048"])
         self.assertEqual((args.top_k, args.batch_size, args.max_length), (100, 4, 2048))
-        with patch("cometa.benchmarks.retrieval.build_dense_run", return_value=Path("run.jsonl")) as build:
+        with patch("metis.benchmarks.retrieval.build_dense_run", return_value=Path("run.jsonl")) as build:
             self.invoke(["retrieve-nfcorpus", "--data-dir", "raw", "--output", "run.jsonl",
                          "--model", "local-embedder", "--revision", "pinned", "--top-k", "100",
                          "--batch-size", "4", "--max-length", "2048"])
@@ -123,7 +123,7 @@ class CLIDataTests(CLIAssertions):
 class CLIVerticalTests(CLIAssertions):
     def test_tiny_train_predict_relocate_evaluate_compare_and_tamper(self):
         import torch
-        from cometa.artifacts import verify_artifact
+        from metis.artifacts import verify_artifact
         torch.set_num_threads(1)
         smoke = load_example("smoke_train")
         with tempfile.TemporaryDirectory() as temporary:

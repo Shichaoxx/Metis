@@ -8,11 +8,11 @@ from pathlib import Path
 import torch
 from peft import LoraConfig, get_peft_model
 from transformers import set_seed
-from cometa.artifacts import seal_artifact, write_json
-from cometa.config import resolve_config
-from cometa.model_registry import build_model
-from cometa.schema import read_jsonl
-from cometa.training import supervised_loss
+from metis.artifacts import seal_artifact, write_json
+from metis.config import resolve_config
+from metis.model_registry import build_model
+from metis.schema import read_jsonl
+from metis.training import supervised_loss
 
 
 def main():

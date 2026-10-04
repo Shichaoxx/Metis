@@ -75,8 +75,9 @@ def read_evaluation(directory):
         raise ValueError("Comparison requires explicit linear/TREC nDCG@10")
     if evaluation.get("candidate_policy") != "frozen_manifest_candidates_no_gold_injection":
         raise ValueError("Held-out candidate set must be frozen and have no gold injection")
-    metric_source = contract.get("cometa_source_sha256", {}).get("metrics.py")
-    require_hash(metric_source, "cometa metrics.py source")
+    source_hashes = contract.get("metis_source_sha256", contract.get("cometa_source_sha256", {}))
+    metric_source = source_hashes.get("metrics.py")
+    require_hash(metric_source, "metis metrics.py source")
     definition = evaluation.get("metric_definition")
     if definition != contract.get("metric_definition"):
         raise ValueError("Metric definition differs from immutable contract")

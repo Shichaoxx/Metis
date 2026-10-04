@@ -30,7 +30,7 @@ def event(run_dir, name, **fields):
 
 def environment():
     packages = {}
-    for name in ("torch", "transformers", "accelerate", "peft", "cometa-local"):
+    for name in ("torch", "transformers", "accelerate", "peft", "metis"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:

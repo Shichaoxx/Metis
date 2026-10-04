@@ -31,7 +31,7 @@ SOURCE_HASHES = {
 }
 HOMEPAGE = "https://www.cl.uni-heidelberg.de/statnlpgroup/nfcorpus/"
 BM25_PROTOCOL = {
-    "name": "cometa-bm25-v1", "k1": 1.2, "b": 0.75,
+    "name": "metis-bm25-v1", "k1": 1.2, "b": 0.75,
     "tokenization": "lowercase then regex [a-z0-9]+; no stemming or stopwords",
     "document_text": "title + newline + text, outer whitespace stripped",
     "query_term_frequency": "unique query terms; each term contributes once",
@@ -73,7 +73,7 @@ def fetch(data_dir: str | Path, archive_path: str | Path | None = None) -> Path:
         temporary = Path(temporary)
         archive = Path(archive_path).expanduser().resolve() if archive_path else temporary / "nfcorpus.zip"
         if archive_path is None:
-            request = urllib.request.Request(URL, headers={"User-Agent": "cometa-nfcorpus/1"})
+            request = urllib.request.Request(URL, headers={"User-Agent": "metis-nfcorpus/1"})
             with urllib.request.urlopen(request, timeout=60) as response, archive.open("wb") as out:
                 downloaded = 0
                 while chunk := response.read(1 << 18):
@@ -248,7 +248,7 @@ def prepare(data_dir: str | Path, output_dir: str | Path, top_k: int = 50,
     else:
         retriever = BM25(texts)
         retrieval_protocol = dict(BM25_PROTOCOL, top_k=top_k)
-        retrieval_name = "cometa-bm25-v1"
+        retrieval_name = "metis-bm25-v1"
     source_revision = hashlib.sha256(json.dumps(source_hashes, sort_keys=True).encode()).hexdigest()
     output.mkdir(parents=True, exist_ok=True)
     (output / "qrels").mkdir(exist_ok=True)
@@ -267,7 +267,7 @@ def prepare(data_dir: str | Path, output_dir: str | Path, top_k: int = 50,
                 "url": HOMEPAGE + "#terms-of-use",
                 "statement": "Free to use for academic purposes. For other uses of NutritionFacts.org data, consult its Terms of Service and contact Dr. Michael Greger.",
             },
-            "adapter": "cometa.nfcorpus.v1", "corpus_count": len(documents),
+            "adapter": "metis.nfcorpus.v1", "corpus_count": len(documents),
             "queries_count": len(queries), "query_split": "native BEIR train/dev/test; dev renamed validation",
             "retrieval": retrieval_protocol,
             "supervision": {

@@ -7,9 +7,9 @@ import pytest
 torch = pytest.importorskip('torch')
 pytest.importorskip('transformers')
 pytest.importorskip('accelerate')
-from cometa.training import (train, supervised_loss, _sample_training_candidates,
+from metis.training import (train, supervised_loss, _sample_training_candidates,
                              _selection_data, _complete_validation_metrics)
-from cometa.model import QwenReranker
+from metis.model import QwenReranker
 
 fixture_spec = importlib.util.spec_from_file_location('training_fixture', Path(__file__).parents[1] / 'examples/smoke_train.py')
 fixture = importlib.util.module_from_spec(fixture_spec)
@@ -37,7 +37,8 @@ def test_multilabel_and_single_choice_objectives():
 
 
 @pytest.mark.parametrize('tuning', ['full', 'lora'])
-def test_real_trainer_export_and_exact_resume(tmp_path, tuning):
+@pytest.mark.parametrize('legacy_names', [False, True])
+def test_real_trainer_export_and_exact_resume(tmp_path, tuning, legacy_names):
     if tuning == 'lora':
         pytest.importorskip('peft')
     torch.set_num_threads(1)
@@ -59,11 +60,13 @@ def test_real_trainer_export_and_exact_resume(tmp_path, tuning):
     config['training']['gradient_checkpointing'] = True
     trained = train(config, tmp_path / 'run')
     checkpoint = tmp_path / 'run/checkpoints/checkpoint-1'
-    for filename in ('optimizer.pt', 'scheduler.pt', 'rng_state.pth', 'trainer_state.json', 'cometa_resume.json'):
+    for filename in ('optimizer.pt', 'scheduler.pt', 'rng_state.pth', 'trainer_state.json', 'metis_resume.json'):
         assert (checkpoint / filename).is_file()
     logs = [json.loads(line) for line in (tmp_path / 'run/logs/events.jsonl').read_text().splitlines()]
     assert any(row['event'] == 'trainer_log' and 'loss' in row['metrics'] for row in logs)
     restored_cfg = copy.deepcopy(config)
+    if legacy_names:
+        (checkpoint / 'metis_resume.json').rename(checkpoint / 'cometa_resume.json')
     restored_cfg['training']['resume_from_checkpoint'] = str(checkpoint)
     resumed = train(restored_cfg, tmp_path / 'resumed')
     left, right = QwenReranker.load(trained), QwenReranker.load(resumed)
@@ -110,8 +113,8 @@ def test_validation_loss_subset_preserves_explicit_counts(tmp_path, all_unjudged
 
 
 def test_smoke_export_is_sealed_and_predictor_ready(tmp_path):
-    from cometa.artifacts import verify_artifact
-    from cometa.api import Predictor
+    from metis.artifacts import verify_artifact
+    from metis.api import Predictor
     result = fixture.run_smoke(tmp_path / 'smoke')
     manifest = verify_artifact(result['artifact'])
     assert manifest['task']['kind'] == 'ranking'
@@ -181,7 +184,7 @@ def test_complete_dev_includes_no_candidate_positive_and_full_qrels(tmp_path):
             return [[2., 1.] for _ in samples]
 
     summary, rows = _complete_validation_metrics(FixedScores(), samples, qrels)
-    from cometa.metrics import ranking_metrics
+    from metis.metrics import ranking_metrics
     expected = ranking_metrics(['d1', 'd2'], [2., 1.], {'d1': 1, 'd2': 1, 'outside': 1})['ndcg@10'] / 2
     assert summary['queries'] == 2 and summary['ndcg@10'] == pytest.approx(expected)
     assert rows[1]['metrics']['ndcg@10'] == 0
@@ -199,9 +202,10 @@ def test_complete_dev_includes_no_candidate_positive_and_full_qrels(tmp_path):
         _selection_data(config['data'], config['training']['selection'], 'ranking', fixture.sample_records())
 
 
-def test_score_head_lora_training_selects_full_dev_best_and_resumes(tmp_path):
+@pytest.mark.parametrize('legacy_names', [False, True])
+def test_score_head_lora_training_selects_full_dev_best_and_resumes(tmp_path, legacy_names):
     pytest.importorskip('peft')
-    from cometa.model_registry import load_model
+    from metis.model_registry import load_model
     torch.set_num_threads(1)
     config = selection_fixture(tmp_path / 'fixture')
     config['model'].update(adapter='qwen3_score_head', head_hidden_size=9)
@@ -240,9 +244,12 @@ def test_score_head_lora_training_selects_full_dev_best_and_resumes(tmp_path):
     assert any(not torch.equal(p, final_model.score_head.state_dict()[name])
                for name, p in best_model.score_head.state_dict().items())
     checkpoint = tmp_path / 'run/checkpoints/checkpoint-1'
-    saved_selection = json.loads((checkpoint / 'cometa_selection.json').read_text())
+    saved_selection = json.loads((checkpoint / 'metis_selection.json').read_text())
     assert saved_selection['best']['global_step'] == 1
     restored = copy.deepcopy(config)
+    if legacy_names:
+        for name in ('resume', 'selection'):
+            (checkpoint / f'metis_{name}.json').rename(checkpoint / f'cometa_{name}.json')
     restored['training']['resume_from_checkpoint'] = str(checkpoint)
     resumed = train(restored, tmp_path / 'resumed')
     resumed_final = load_model(tmp_path / 'resumed/exports/final')

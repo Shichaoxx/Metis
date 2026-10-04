@@ -1,6 +1,6 @@
 # 开始使用
 
-Metis 当前包与 CLI 名称为 `cometa`。先看 [能力与进度](../project/status.md)，再阅读对应 cookbook。
+Metis Python 包和 CLI 使用 `metis`。先看 [能力与进度](../project/status.md)，再阅读对应 cookbook。
 
 ## 环境与安装
 
@@ -10,7 +10,7 @@ Python 3.10+。在新环境中安装核心接口：
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
-cometa --help
+metis --help
 ```
 
 核心数据、配置、注册和指标模块不依赖 Torch。训练、模型推理和 LoRA 使用可选依赖：
@@ -52,7 +52,7 @@ python -m pip install -e '.[train,peft]'
 ## 使用训练产物
 
 ```python
-from cometa import Predictor
+from metis import Predictor
 
 sample = {
     "schema_version": "1.0",
@@ -74,7 +74,7 @@ result = predictor.predict([sample], top_k=1)[0]
 
 ```bash
 python examples/agent_tool.py --artifact /absolute/path/to/exports/best
-cometa serve --artifact /absolute/path/to/exports/best
+metis serve --artifact /absolute/path/to/exports/best
 ```
 
 HTTP 是单 worker 开发服务：`POST /v1/decisions` 接收 `samples` 和可选 `policy`，`GET /health` 检查加载状态。加载依赖、封存规则和 checkpoint 恢复见 [产物说明](artifacts.md)。

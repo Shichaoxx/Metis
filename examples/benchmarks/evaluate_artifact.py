@@ -18,9 +18,9 @@ import traceback
 import uuid
 
 import evaluate_pretrained as common
-from cometa.artifacts import environment, verify_artifact, write_json
-from cometa.metrics import aggregate, load_qrels, ranking_metrics
-from cometa.schema import load_manifest, read_jsonl, sha256
+from metis.artifacts import environment, verify_artifact, write_json
+from metis.metrics import aggregate, load_qrels, ranking_metrics
+from metis.schema import load_manifest, read_jsonl, sha256
 
 VERSION = "metis-artifact-eval-v1"
 METRIC_DEFINITION = {
@@ -145,7 +145,7 @@ def run(args):
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
     import torch
-    from cometa.api import Predictor
+    from metis.api import Predictor
     torch.set_num_threads(args.threads)
     torch.manual_seed(0)
     # Weight dtype and execution precision are distinct. In particular,
@@ -180,7 +180,7 @@ def run(args):
                 "candidate_ids_sha256": common.digest_json([[s["id"], [c["id"] for c in s["candidates"]]] for s in samples]),
                 "artifact": identity, "parameters": parameters,
                 "runner_sha256": sha256(Path(__file__)), "helper_sha256": sha256(Path(common.__file__)),
-                "cometa_source_sha256": common.source_identity(), "metric_definition": METRIC_DEFINITION,
+                "metis_source_sha256": common.source_identity(), "metric_definition": METRIC_DEFINITION,
                 "environment": environment(), "device_identity": common.device_identity(torch, args.device),
                 "float32_matmul_precision": torch.get_float32_matmul_precision(),
                 "cuda_matmul_allow_tf32": bool(torch.backends.cuda.matmul.allow_tf32),

@@ -3,7 +3,7 @@
 
 No downloader: --model must be an existing local model directory.
 Example (after the operator downloads the public checkpoint):
-  PYTHONPATH=/path/to/cometa/src python benchmark_layouts.py \
+  PYTHONPATH=/path/to/metis/src python benchmark_layouts.py \
     --model /path/to/Qwen3-Reranker-0.6B --manifest /path/to/manifest.json \
     --device mps --dtype float16 --queries 3 --candidates 50 \
     --max-length 2048 --max-tree-tokens 4096 --pair-batch-size 4 \
@@ -202,8 +202,8 @@ def main():
         if args.repo:
             sys.path.insert(0, str(args.repo.resolve() / 'src'))
         import torch
-        from cometa.model import QwenReranker
-        from cometa.schema import load_manifest, read_jsonl
+        from metis.model import QwenReranker
+        from metis.schema import load_manifest, read_jsonl
         torch.set_num_threads(args.cpu_threads)
         device = torch.device(args.device)
         if device.type == 'mps' and not torch.backends.mps.is_available():

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from cometa.benchmarks.nfcorpus import BM25, fetch, prepare, read_qrels
+from metis.benchmarks.nfcorpus import BM25, fetch, prepare, read_qrels
 
 
 class NFCorpusTests(unittest.TestCase):

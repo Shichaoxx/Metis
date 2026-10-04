@@ -354,11 +354,15 @@ def train(config: dict, run_dir: Path) -> Path:
     resume = train_cfg.get('resume_from_checkpoint')
     best = None
     if resume:
-        saved_contract = Path(resume) / 'cometa_resume.json'
+        saved_contract = Path(resume) / 'metis_resume.json'
+        if not saved_contract.exists():
+            saved_contract = Path(resume) / 'cometa_resume.json'
         if not saved_contract.exists() or json.loads(saved_contract.read_text()) != contract:
             raise ValueError('Resume contract differs or is missing; use a fresh run to initialize weights')
         if selection_enabled:
-            state_path = Path(resume) / 'cometa_selection.json'
+            state_path = Path(resume) / 'metis_selection.json'
+            if not state_path.exists():
+                state_path = Path(resume) / 'cometa_selection.json'
             if not state_path.is_file():
                 raise ValueError('Checkpoint is missing selection state')
             best = json.loads(state_path.read_text()).get('best')
@@ -442,8 +446,8 @@ def train(config: dict, run_dir: Path) -> Path:
         def on_save(self, args, state, control, **kwargs):
             if state.is_world_process_zero:
                 destination = Path(args.output_dir) / f'checkpoint-{state.global_step}'
-                write_json(destination / 'cometa_resume.json', contract)
-                write_json(destination / 'cometa_selection.json', {'best': best, 'selection': selection_contract})
+                write_json(destination / 'metis_resume.json', contract)
+                write_json(destination / 'metis_selection.json', {'best': best, 'selection': selection_contract})
                 write_json(Path(args.output_dir) / 'index.json', {
                     'last': destination.name, 'best': best, 'global_step': state.global_step,
                     'selection': selection_contract})

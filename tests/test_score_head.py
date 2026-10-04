@@ -13,9 +13,9 @@ import pytest
 torch = pytest.importorskip('torch')
 pytest.importorskip('transformers')
 
-from cometa.compiler import SCORE_HEAD_COMPILER_VERSION
-from cometa.model import QwenReranker, QwenScoreHead
-from cometa.model_registry import MODEL_REGISTRY, build_model, load_model
+from metis.compiler import SCORE_HEAD_COMPILER_VERSION
+from metis.model import QwenReranker, QwenScoreHead
+from metis.model_registry import MODEL_REGISTRY, build_model, load_model
 
 
 fixture_spec = importlib.util.spec_from_file_location(

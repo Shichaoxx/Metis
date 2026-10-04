@@ -4,12 +4,12 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from cometa.api import decide
-from cometa.artifacts import create_run, finish_run, seal_artifact, verify_artifact, write_json
-from cometa.config import resolve_config
-from cometa.metrics import ranking_metrics
-from cometa.registry import DatasetRegistry, Registry
-from cometa.schema import sha256, validate_sample, validate_dataset, write_jsonl
+from metis.api import decide
+from metis.artifacts import create_run, finish_run, seal_artifact, verify_artifact, write_json
+from metis.config import resolve_config
+from metis.metrics import ranking_metrics
+from metis.registry import DatasetRegistry, Registry
+from metis.schema import sha256, validate_sample, validate_dataset, write_jsonl
 
 
 def sample(sid="q1"):
@@ -64,7 +64,7 @@ class SchemaTests(unittest.TestCase):
     def test_registry_version_is_immutable(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); path = dataset(root)
-            registry = DatasetRegistry(root / ".cometa/datasets.json")
+            registry = DatasetRegistry(root / ".metis/datasets.json")
             registry.register("toy", path)
             self.assertEqual(registry.resolve("toy"), path.resolve())
             with self.assertRaises(ValueError): registry.register("toy", path)
@@ -102,8 +102,8 @@ class MetricTests(unittest.TestCase):
 
 class ArtifactTests(unittest.TestCase):
     def test_documented_top_level_predictor_import(self):
-        from cometa import Predictor
-        from cometa.api import Predictor as Implementation
+        from metis import Predictor
+        from metis.api import Predictor as Implementation
         self.assertIs(Predictor, Implementation)
 
     def test_unique_runs_and_portable_artifact_integrity(self):

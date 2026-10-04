@@ -26,10 +26,10 @@ def test_tiny_scorehead_full_evaluation_resume_and_integrity(tmp_path, monkeypat
     Predictor.predict is only wrapped to count calls; all initial predictions
     load a real sealed tiny Qwen3 + MLP head and execute its CPU forward.
     """
-    from cometa.api import Predictor
-    from cometa.artifacts import seal_artifact
-    from cometa.model import QwenScoreHead
-    from cometa.schema import sha256
+    from metis.api import Predictor
+    from metis.artifacts import seal_artifact
+    from metis.model import QwenScoreHead
+    from metis.schema import sha256
 
     root = Path(__file__).resolve().parents[1]
     scripts = root / 'examples' / 'benchmarks'

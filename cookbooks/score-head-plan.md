@@ -137,7 +137,7 @@ Trainer耗时5849.8秒，含训练期间dev选型；训练模型test同步打分
 # 先核实 GPU 资源；编号按实际可用设备选择。
 nvidia-smi
 # recipe 内固定了基座目录、版本、采样、训练预算和完整 dev 选型。
-CUDA_VISIBLE_DEVICES=0 cometa train recipes/nfcorpus/qwen3_base_score_head_06b.json
+CUDA_VISIBLE_DEVICES=0 metis train recipes/nfcorpus/qwen3_base_score_head_06b.json
 ```
 
 本轮已在 本地环境 准备固定版本的 `data/models/Qwen3-0.6B-Base` 与 `data/nfcorpus-bm25`。在另一台机器复现时，需下载同一公开模型 revision 并校验相同 manifest 身份；不能拿旧 `data/nfcorpus` 模板替代本轮 BM25 top50。

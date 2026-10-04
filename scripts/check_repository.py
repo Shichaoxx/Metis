@@ -13,7 +13,7 @@ from urllib.parse import unquote, urlsplit
 
 DOC_DIRS = ("docs", "cookbooks", "examples", "recipes", "tests", "ops", "scripts")
 RUNTIME_DIRS = {"data", "runs", "reports", "artifacts", "logs", ".local"}
-REQUIRED = ("README.md", "CONTRIBUTING.md", "pyproject.toml", "src/cometa",
+REQUIRED = ("README.md", "CONTRIBUTING.md", "pyproject.toml", "src/metis",
             "tests", "docs/README.md", "cookbooks/README.md", "examples/README.md",
             "recipes/README.md")
 INLINE_LINK = re.compile(

@@ -1,6 +1,6 @@
 # 现有原型设计与经验转化
 
-本文解释 Metis 的现有代码（工程标识仍为 `cometa`），不代表通用后训练 Kit 已完成。产品要求以 [CORE](../project/core.md) 为准，验证范围与缺口见 [工作盘点](../project/status.md)。当前已接通 Qwen3 yes/no 与 Qwen base + ScoreHead；模型工厂用于训练和 Predictor 加载。真实微调执行状态见工作盘点。
+本文解释 Metis 的现有代码（工程标识仍为 `metis`），不代表通用后训练 Kit 已完成。产品要求以 [CORE](../project/core.md) 为准，验证范围与缺口见 [工作盘点](../project/status.md)。当前已接通 Qwen3 yes/no 与 Qwen base + ScoreHead；模型工厂用于训练和 Predictor 加载。真实微调执行状态见工作盘点。
 
 设计来源：个人列排序工程经验，以及五道口纳什的视频和 [modern_genai_bilibili](https://github.com/wdkns/modern_genai_bilibili) 中关于 Jev / Tree Mask 的教学资料。具体来源、参考版本与独立实现范围见 [来源致谢](../../ACKNOWLEDGEMENTS.md)。框架组合与工程实现的价值，不等于相关 attention 方法的首创。
 

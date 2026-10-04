@@ -1,6 +1,6 @@
 # 仓库目录
 
-- src/cometa/：可安装运行库与 CLI
+- src/metis/：可安装运行库与 CLI
 - tests/：软件契约与小型集成测试
 - examples/：调用方式和评测示例
 - recipes/：按任务组织的训练配置

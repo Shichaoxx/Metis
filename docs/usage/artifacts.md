@@ -25,6 +25,6 @@ runs/<project>/<timestamp-uuid>/
     tokenizer/
 ```
 
-`cometa train CONFIG --resume CHECKPOINT` 恢复真实训练状态，并检查模型、输入、目标及数据身份。`cometa export --artifact ... --output ...` 校验并复制**已导出的预测产物**，不把任意 checkpoint 转换成模型。full export 自包含；LoRA export 依赖记录的基座（远端固定 revision，本地验证权重哈希）。LoRA 的可恢复 Trainer checkpoint 目前保存完整 wrapper state，因此大于 adapter export。
+`metis train CONFIG --resume CHECKPOINT` 恢复真实训练状态，并检查模型、输入、目标及数据身份。`metis export --artifact ... --output ...` 校验并复制**已导出的预测产物**，不把任意 checkpoint 转换成模型。full export 自包含；LoRA export 依赖记录的基座（远端固定 revision，本地验证权重哈希）。LoRA 的可恢复 Trainer checkpoint 目前保存完整 wrapper state，因此大于 adapter export。
 
 

@@ -63,8 +63,8 @@ def main():
         if args.repo:
             sys.path.insert(0, str(args.repo.resolve() / 'src'))
         import torch
-        from cometa.model import QwenReranker
-        from cometa.schema import load_manifest, read_jsonl
+        from metis.model import QwenReranker
+        from metis.schema import load_manifest, read_jsonl
         torch.set_num_threads(4)
         device = torch.device(args.device)
         if device.type == 'mps' and not torch.backends.mps.is_available():

@@ -4,7 +4,7 @@
 
 **来源与致谢：** 本教程的 Tree Mask / Jev 讨论与张量化表达，参考了 **Bilibili「五道口纳什」的视频**（[作者主页](https://space.bilibili.com/59807853)）和其 [GitHub 教学资料](https://github.com/wdkns/modern_genai_bilibili)，特别是 `slides/jev_architecture-v2.pdf`。例子与图形由本项目重新构造、独立绘制；教学思路受到上述资料启发，已有算法不归为本项目首创。参见 [R0](../research/references.md#r0-五道口纳什的视频与-github-教学资料) 与 [版权边界](../../ACKNOWLEDGEMENTS.md)。
 
-本文配套 `tensor-guide.pdf`。项目现名为 Metis，PDF 保留旧代号 Cometa。研究的问题是：怎样把预训练模型用于固定判断任务，并让输入编译、训练、评测和导出遵守同一份契约。它不是 Jev 的复现，也不声称发现了新的 attention 算法。
+研究的问题是：怎样把预训练模型用于固定判断任务，并让输入编译、训练、评测和导出遵守同一份契约。它不是 Jev 的复现，也不声称发现了新的 attention 算法。
 
 本篇的读出示例使用 **Qwen/Qwen3-Reranker-0.6B 的已有 yes/no head**；当前真实后训练采用 **Qwen3-0.6B-Base + 独立 ScoreHead**，见 [ScoreHead 说明](../architecture/score-head.md) 与 [训练协议](../../cookbooks/score-head-plan.md)。公开数据示例使用 **BEIR NFCorpus**。本文所有短 token、矩阵和分数均为合成教学例子；它们不是模型预测、性能结果或业务数据。Jev 架构研究材料只提供问题背景，不能据此确认 Jev 的内部结构。
 
@@ -236,7 +236,7 @@ PyTorch SDPA 的布尔 mask 中 True 表示允许参与；其他接口可能采�
 
 ## 8. NFCorpus 操作路线：先建立可信基线
 
-完整命令以 `cookbooks/nfcorpus.md` 与 `python -m cometa --help` 为准。NFCorpus 的 BEIR 版本提供 native train/dev/test；dev 在本项目 manifest 中映射为 validation。这里有两条路线：**冻结 BM25 top50 已用于本轮 ScoreHead 后训练与原始 reranker 对照；Qwen3-Embedding-0.6B exact cosine top100 → Qwen3-Reranker-0.6B 仍是待实测路线。** 两条路线的候选都要冻结，测试时不能把未召回的 gold positive 补进去。[R6]
+完整命令以 `cookbooks/nfcorpus.md` 与 `python -m metis --help` 为准。NFCorpus 的 BEIR 版本提供 native train/dev/test；dev 在本项目 manifest 中映射为 validation。这里有两条路线：**冻结 BM25 top50 已用于本轮 ScoreHead 后训练与原始 reranker 对照；Qwen3-Embedding-0.6B exact cosine top100 → Qwen3-Reranker-0.6B 仍是待实测路线。** 两条路线的候选都要冻结，测试时不能把未召回的 gold positive 补进去。[R6]
 
 建议依次跑：
 
@@ -249,34 +249,34 @@ PyTorch SDPA 的布尔 mask 中 True 表示允许参与；其他接口可能采�
 仓库根目录下的 CLI 路线如下。首个命令下载小型公开数据；模型评测与训练会另外加载较大的预训练权重，不属于无需下载的 smoke test。输出目录要求不存在，重跑时使用新的 run 名称。
 
 ```bash
-python -m cometa prepare-nfcorpus --download \
+python -m metis prepare-nfcorpus --download \
   --data-dir data/raw --output data/nfcorpus-bm25 --top-k 50
-python -m cometa validate data/nfcorpus-bm25/manifest.json
-python -m cometa evaluate --manifest data/nfcorpus-bm25/manifest.json \
+python -m metis validate data/nfcorpus-bm25/manifest.json
+python -m metis evaluate --manifest data/nfcorpus-bm25/manifest.json \
   --split validation --baseline bm25 --output runs/bm25-dev
 ```
 
 
 ```bash
-python -m cometa.benchmarks.retrieval \
+python -m metis.benchmarks.retrieval \
   --data-dir data/raw/nfcorpus \
   --output data/retrieval/nfcorpus-qwen3-06b-top100.jsonl \
   --model Qwen/Qwen3-Embedding-0.6B \
   --device cuda --dtype bfloat16 --batch-size 8 --max-length 8192 --top-k 100
-python -m cometa prepare-nfcorpus \
+python -m metis prepare-nfcorpus \
   --data-dir data/raw/nfcorpus --output data/nfcorpus --top-k 100 \
   --retrieval-run data/retrieval/nfcorpus-qwen3-06b-top100.jsonl
-python -m cometa evaluate --manifest data/nfcorpus/manifest.json \
+python -m metis evaluate --manifest data/nfcorpus/manifest.json \
   --split validation --model Qwen/Qwen3-Reranker-0.6B \
   --layout pairs --backend eager --device cuda --dtype bfloat16 \
   --max-length 2048 --pair-batch-size 4 \
   --output runs/pretrained-dev
-python -m cometa train recipes/nfcorpus/qwen3_reranker_06b.json
+python -m metis train recipes/nfcorpus/qwen3_reranker_06b.json
 ```
 
 embedding 脚本按官方 query instruction、最后一个非 padding token pooling、L2 normalization 生成向量，对全库做 exact cosine；它不读取 qrels。候选分数与模型/输入 metadata 一起冻结。其当前验证只覆盖 fake embedding 的接口链路，不代表真实模型质量。
 
-训练返回 artifact 路径后，用 `evaluate --artifact 实际路径` 替换上面的 `--model ...` 评测同一 validation 集；可用 `cometa compare --baseline runs/pretrained-dev --candidate runs/finetuned-dev --metric ndcg@10 --max-drop 0` 检查无退化门槛。验证不通过就保留原模型。模型选择只使用 validation，最终配置确定后再运行 test。top100 的单 query 训练仍可能占用大量显存，梯度累积不能降低这一条 query 的激活峰值。
+训练返回 artifact 路径后，用 `evaluate --artifact 实际路径` 替换上面的 `--model ...` 评测同一 validation 集；可用 `metis compare --baseline runs/pretrained-dev --candidate runs/finetuned-dev --metric ndcg@10 --max-drop 0` 检查无退化门槛。验证不通过就保留原模型。模型选择只使用 validation，最终配置确定后再运行 test。top100 的单 query 训练仍可能占用大量显存，梯度累积不能降低这一条 query 的激活峰值。
 
 本 recipe 只在 train 的固定 top-k 内没有正例时，用最高 relevance grade（再按 ID 打破平局）的正例替换最后一个候选，保持候选数不超过 top-k，并记录这个变换。dev/test 不注入正例，也不删除没有已判断候选的 query。train 中未出现在 qrels 的候选显式作为弱负例；dev/test 中省略其标签并标记 ignore。弱负例不等于人工标注负例。
 
@@ -285,7 +285,7 @@ NFCorpus 原作者的条款允许学术用途免费使用，其他用途需取�
 最小评分调用（会在首次运行时按环境配置加载模型权重）：
 
 ```python
-from cometa.model import QwenReranker
+from metis.model import QwenReranker
 
 model = QwenReranker(
     "Qwen/Qwen3-Reranker-0.6B",

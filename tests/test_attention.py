@@ -1,6 +1,6 @@
 import pytest
 torch = pytest.importorskip('torch')
-from cometa.attention import tree_visibility, tree_position_ids, tree_readout_positions, tree_attention_mask
+from metis.attention import tree_visibility, tree_position_ids, tree_readout_positions, tree_attention_mask
 
 
 def test_toy_tree_visibility_and_reset_positions():

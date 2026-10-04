@@ -17,12 +17,13 @@ def write_json(path, value):
     path.write_text(json.dumps(value) + '\n')
 
 
-def fixture(path, *, scores=(0.2, 0.4), scope='full_split', compiler='yesno', max_length=2048):
+def fixture(path, *, scores=(0.2, 0.4), scope='full_split', compiler='yesno', max_length=2048,
+            source_key='metis_source_sha256'):
     path.mkdir()
     query_ids = [f'q{i}' for i in range(len(scores))]
     contract = {'manifest_sha256': 'a' * 64, 'split_sha256': 'b' * 64, 'qrels_sha256': 'c' * 64,
                 'sample_ids': query_ids, 'parameters': {'limit': len(scores) if scope == 'pilot' else None},
-                'cometa_source_sha256': {'metrics.py': 'd' * 64}}
+                source_key: {'metrics.py': 'd' * 64}}
     inputs = {'version': compiler, 'readout': compiler, 'max_length': max_length}
     records = []
     for ordinal, value in enumerate(scores):
@@ -69,6 +70,11 @@ class TaskReportTests(unittest.TestCase):
         self.assertEqual(result['ndcg@10_paired_bootstrap']['seed'], 42)
         self.assertTrue(result['selection_allowed'])
 
+    def test_legacy_source_hash_field_compatible_with_metis(self):
+        a, b = self.pair(source_key='cometa_source_sha256')
+        result = comparison.compare(a, b)
+        self.assertAlmostEqual(result['ndcg@10_paired_bootstrap']['mean_delta'], 0.0)
+
     def test_both_pilots_remain_pilots(self):
         a, b = self.root / 'a', self.root / 'b'
         fixture(a, scores=(.2,), scope='pilot')
@@ -109,7 +115,7 @@ class TaskReportTests(unittest.TestCase):
     def test_metric_implementation_mismatch_rejected(self):
         a, b = self.pair()
         contract = json.loads((b / 'protocol.json').read_text())
-        contract['cometa_source_sha256']['metrics.py'] = 'f' * 64
+        contract['metis_source_sha256']['metrics.py'] = 'f' * 64
         write_json(b / 'protocol.json', contract)
         protocol = json.loads((b / 'evaluation.json').read_text())
         protocol['protocol_sha256'] = comparison.digest_json(contract)

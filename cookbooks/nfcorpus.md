@@ -28,10 +28,10 @@ efe5be03f8c5b86a5870102d0599d227c8c6e2484328e68c6522560385671b0b
 
 ```bash
 python -m pip install -e .
-cometa prepare-nfcorpus --download --data-dir data/raw --output data/nfcorpus-bm25 --top-k 50
-cometa dataset register nfcorpus-bm25 data/nfcorpus-bm25/manifest.json
-cometa validate data/nfcorpus-bm25/manifest.json
-cometa evaluate --manifest data/nfcorpus-bm25/manifest.json --split validation --baseline bm25 --output runs/bm25-dev
+metis prepare-nfcorpus --download --data-dir data/raw --output data/nfcorpus-bm25 --top-k 50
+metis dataset register nfcorpus-bm25 data/nfcorpus-bm25/manifest.json
+metis validate data/nfcorpus-bm25/manifest.json
+metis evaluate --manifest data/nfcorpus-bm25/manifest.json --split validation --baseline bm25 --output runs/bm25-dev
 ```
 
 已有 archive 时可离线调用 `nfcorpus.fetch("data/raw", archive_path="/path/nfcorpus.zip")`，再运行不带 `--download` 的准备命令。下载器校验 archive 大小、SHA-256、成员白名单和每个原始文件的 SHA-256。原始数据留在 `data/raw/nfcorpus`，prepared 数据写到独立目录。
@@ -53,15 +53,15 @@ cometa evaluate --manifest data/nfcorpus-bm25/manifest.json --split validation -
 
 ```bash
 python -m pip install -e '.[train,peft]'
-python -m cometa.benchmarks.retrieval \
+python -m metis.benchmarks.retrieval \
   --data-dir data/raw/nfcorpus \
   --output data/retrieval/nfcorpus-qwen3-06b-top100.jsonl \
   --model Qwen/Qwen3-Embedding-0.6B \
   --device cuda --dtype bfloat16 --batch-size 8 --max-length 8192 --top-k 100
-cometa prepare-nfcorpus \
+metis prepare-nfcorpus \
   --data-dir data/raw/nfcorpus --output data/nfcorpus --top-k 100 \
   --retrieval-run data/retrieval/nfcorpus-qwen3-06b-top100.jsonl
-cometa validate data/nfcorpus/manifest.json
+metis validate data/nfcorpus/manifest.json
 ```
 
 正式实验应把已核实的 HF commit 写入 embedding 命令的 `--revision`，并固定 reranker 的 revision。本次已测 reranker revision 是 `e61197ed45024b0ed8a2d74b80b4d909f1255473`，不能将其用于 embedding。训练 recipe 的 `revision` 仍为 null，且默认 manifest 是 `data/nfcorpus/manifest.json`；已测试的 BM25 数据则位于 `data/nfcorpus-bm25/manifest.json`，二者不可无说明地混用。代码另记录模型身份、依赖版本与输入哈希。
@@ -79,9 +79,9 @@ cometa validate data/nfcorpus/manifest.json
 ## 3. 在同一候选集上先测原模型
 
 ```bash
-cometa evaluate --manifest data/nfcorpus/manifest.json --split validation \
+metis evaluate --manifest data/nfcorpus/manifest.json --split validation \
   --baseline retrieval --output runs/dense-dev
-cometa evaluate --manifest data/nfcorpus/manifest.json --split validation \
+metis evaluate --manifest data/nfcorpus/manifest.json --split validation \
   --model Qwen/Qwen3-Reranker-0.6B --layout pairs --backend eager \
   --device cuda --dtype bfloat16 --max-length 2048 --pair-batch-size 4 --output runs/pretrained-dev
 ```
@@ -93,16 +93,16 @@ cometa evaluate --manifest data/nfcorpus/manifest.json --split validation \
 主配置是 [qwen3_reranker_06b.json](../recipes/nfcorpus/qwen3_reranker_06b.json)：1 epoch，LoRA，学习率 `2e-6`，原 yes/no 读出，BCE + pairwise loss，pairs/eager 布局，单 pair 上限 2,048 tokens、pair microbatch 为 4、开启 gradient checkpointing。配置路径相对配置文件解析，默认读 `data/nfcorpus/manifest.json`。LoRA 与 checkpoint/export 已有 tiny CPU 验证；这不等于公开模型质量或 CUDA 资源验证。长度预算可能截断文档，原模型与微调模型保持同一预算，报告应检查截断 metadata。
 
 ```bash
-cometa train recipes/nfcorpus/qwen3_reranker_06b.json
+metis train recipes/nfcorpus/qwen3_reranker_06b.json
 ```
 
 训练输出会给出实际 artifact 路径。将其代入以下命令：
 
 ```bash
 ARTIFACT="/absolute/path/reported/by/train/export"
-cometa evaluate --manifest data/nfcorpus/manifest.json --split validation \
+metis evaluate --manifest data/nfcorpus/manifest.json --split validation \
   --artifact "$ARTIFACT" --device cuda --dtype bfloat16 --output runs/finetuned-dev
-cometa compare --baseline runs/pretrained-dev --candidate runs/finetuned-dev \
+metis compare --baseline runs/pretrained-dev --candidate runs/finetuned-dev \
   --metric ndcg@10 --max-drop 0
 ```
 
@@ -111,7 +111,7 @@ cometa compare --baseline runs/pretrained-dev --candidate runs/finetuned-dev \
 **验证不通过就保留原模型。** 选定方案后只在 test 上报告一次最终结果；不要看 test 分数后再次调超参数。原模型与最终模型的 test 对比可以保留作为最后报告，但不能把它用作选择器。
 
 ```bash
-cometa evaluate --manifest data/nfcorpus/manifest.json --split test \
+metis evaluate --manifest data/nfcorpus/manifest.json --split test \
   --artifact "$ARTIFACT" --device cuda --dtype bfloat16 --output runs/selected-test
 ```
 

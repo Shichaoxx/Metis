@@ -1,6 +1,6 @@
 """Optional Qwen3 embedding retrieval; no torch or transformers import until use.
 
-Run ``python -m cometa.benchmarks.retrieval --help`` for the GPU recipe. This
+Run ``python -m metis.benchmarks.retrieval --help`` for the GPU recipe. This
 module never reads qrels: retrieval candidates cannot be augmented by gold.
 """
 
