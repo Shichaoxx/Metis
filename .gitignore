@@ -28,3 +28,14 @@ htmlcov/
 .env.*
 !.env.example
 .DS_Store
+
+# Local supervision and historical documents
+/AGENTS.md
+/CORE.md
+/HANDOFF.md
+/JUPITER.md
+/ops/
+/docs/operations/
+/docs/history/
+/docs/sota-assessment.md
+/docs/research/sota-assessment.md

@@ -1,6 +1,6 @@
 # 开始使用
 
-Metis Python 包和 CLI 使用 `metis`。先看 [能力与进度](../project/status.md)，再阅读对应 cookbook。
+Metis 的 Python 包与 CLI 名称为 `metis`。当前能力见[项目状态](../project/status.md)，设计见[核心说明](../project/core.md)。
 
 ## 环境与安装
 
@@ -19,9 +19,7 @@ metis --help
 python -m pip install -e '.[train,peft]'
 ```
 
-
-
-软件验证与 tiny 示例见 [测试说明](../development/testing.md)；真实任务的运行步骤见 [cookbook 索引](../../cookbooks/README.md)。
+开发与软件检查见[贡献指南](../../CONTRIBUTING.md)，真实任务的运行步骤见 [cookbook 索引](../../cookbooks/README.md)。
 
 ## 数据契约
 

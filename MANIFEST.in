@@ -1,5 +1,5 @@
 include README.md CONTRIBUTING.md ACKNOWLEDGEMENTS.md
-include constraints-tested.txt
+include docs/README.md
 recursive-include src *.py
 recursive-include tests *.py *.md
 recursive-include examples *.py *.md
@@ -30,4 +30,6 @@ prune .venv
 prune build
 prune dist
 exclude workspace.local.json
+exclude docs/research/sota-assessment.md
+exclude docs/sota-assessment.md
 global-exclude *.py[cod] .DS_Store

@@ -234,53 +234,11 @@ PyTorch SDPA 的布尔 mask 中 True 表示允许参与；其他接口可能采�
 
 性能报告至少固定候选数、输入长度、batch、dtype、硬件、tokenize 是否计时、warmup 与 GPU 同步方式，并同时报告质量、峰值显存和延迟。没有测量就不填“加速倍数”。
 
-## 8. NFCorpus 操作路线：先建立可信基线
+## 8. 从教学例子到 NFCorpus
 
-完整命令以 `cookbooks/nfcorpus.md` 与 `python -m metis --help` 为准。NFCorpus 的 BEIR 版本提供 native train/dev/test；dev 在本项目 manifest 中映射为 validation。这里有两条路线：**冻结 BM25 top50 已用于本轮 ScoreHead 后训练与原始 reranker 对照；Qwen3-Embedding-0.6B exact cosine top100 → Qwen3-Reranker-0.6B 仍是待实测路线。** 两条路线的候选都要冻结，测试时不能把未召回的 gold positive 补进去。[R6]
+NFCorpus 的数据、split 和候选准备见 [数据指南](../../cookbooks/nfcorpus.md)，已完成的 Base + ScoreHead + LoRA 训练、dev 选优、test 和产物调用见 [ScoreHead cookbook](../../cookbooks/score-head-plan.md)。模型与数据条款分别见 [来源致谢](../../ACKNOWLEDGEMENTS.md)。
 
-建议依次跑：
-
-1. 准备公开数据、固定 native splits，记录 hash、candidate top-k 与缺失标签策略。
-2. 记录第一阶段候选召回，保留完整 qrels 作为指标分母；不要把 BM25 smoke 的低召回外推成模型能力。
-3. 在同一候选集评测原始 Qwen3-Reranker；这是可用模型基线。
-4. 短程训练与 export/reload 验证，再评测 fine-tuned 模型。
-5. 权重固定，比较 pairs 与 tree 的正确性和性能；不要把换权重与换 backend 的收益混在一起。
-
-仓库根目录下的 CLI 路线如下。首个命令下载小型公开数据；模型评测与训练会另外加载较大的预训练权重，不属于无需下载的 smoke test。输出目录要求不存在，重跑时使用新的 run 名称。
-
-```bash
-python -m metis prepare-nfcorpus --download \
-  --data-dir data/raw --output data/nfcorpus-bm25 --top-k 50
-python -m metis validate data/nfcorpus-bm25/manifest.json
-python -m metis evaluate --manifest data/nfcorpus-bm25/manifest.json \
-  --split validation --baseline bm25 --output runs/bm25-dev
-```
-
-
-```bash
-python -m metis.benchmarks.retrieval \
-  --data-dir data/raw/nfcorpus \
-  --output data/retrieval/nfcorpus-qwen3-06b-top100.jsonl \
-  --model Qwen/Qwen3-Embedding-0.6B \
-  --device cuda --dtype bfloat16 --batch-size 8 --max-length 8192 --top-k 100
-python -m metis prepare-nfcorpus \
-  --data-dir data/raw/nfcorpus --output data/nfcorpus --top-k 100 \
-  --retrieval-run data/retrieval/nfcorpus-qwen3-06b-top100.jsonl
-python -m metis evaluate --manifest data/nfcorpus/manifest.json \
-  --split validation --model Qwen/Qwen3-Reranker-0.6B \
-  --layout pairs --backend eager --device cuda --dtype bfloat16 \
-  --max-length 2048 --pair-batch-size 4 \
-  --output runs/pretrained-dev
-python -m metis train recipes/nfcorpus/qwen3_reranker_06b.json
-```
-
-embedding 脚本按官方 query instruction、最后一个非 padding token pooling、L2 normalization 生成向量，对全库做 exact cosine；它不读取 qrels。候选分数与模型/输入 metadata 一起冻结。其当前验证只覆盖 fake embedding 的接口链路，不代表真实模型质量。
-
-训练返回 artifact 路径后，用 `evaluate --artifact 实际路径` 替换上面的 `--model ...` 评测同一 validation 集；可用 `metis compare --baseline runs/pretrained-dev --candidate runs/finetuned-dev --metric ndcg@10 --max-drop 0` 检查无退化门槛。验证不通过就保留原模型。模型选择只使用 validation，最终配置确定后再运行 test。top100 的单 query 训练仍可能占用大量显存，梯度累积不能降低这一条 query 的激活峰值。
-
-本 recipe 只在 train 的固定 top-k 内没有正例时，用最高 relevance grade（再按 ID 打破平局）的正例替换最后一个候选，保持候选数不超过 top-k，并记录这个变换。dev/test 不注入正例，也不删除没有已判断候选的 query。train 中未出现在 qrels 的候选显式作为弱负例；dev/test 中省略其标签并标记 ignore。弱负例不等于人工标注负例。
-
-NFCorpus 原作者的条款允许学术用途免费使用，其他用途需取得原作者许可；不能将它描述成通用商用开源数据。见 [原站 terms of use](https://www.cl.uni-heidelberg.de/statnlpgroup/nfcorpus/#terms-of-use)。
+张量例子使用合成输入。真实实验固定候选、输入预算、权重和评价协议，分别验证训练质量与布局性能。
 
 最小评分调用（会在首次运行时按环境配置加载模型权重）：
 

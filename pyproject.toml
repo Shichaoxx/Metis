@@ -14,7 +14,6 @@ dependencies = []
 train = ["torch>=2.6", "transformers>=4.57,<5", "accelerate>=1.10,<2", "safetensors>=0.4", "PyYAML>=6"]
 peft = ["peft>=0.17,<1"]
 test = ["pytest>=8"]
-docs = ["reportlab>=4", "pypdf>=5", "numpy>=1.26", "Pillow>=10"]
 
 [project.scripts]
 metis = "metis.cli:main"

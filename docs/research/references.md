@@ -64,6 +64,6 @@ Metis 使用 Trainer 作为通用生命周期基础，把候选数据、目标�
 
 ## 如何复查本教程
 
-1. 初版 PDF 与生成器已归档到 `docs/history/tensor-guide-v1/`；生成器保留当时接口，仅用于重建旧版教程。当前讲解以 [张量教程](../learning/tensors.md) 和 [ScoreHead](../architecture/score-head.md) 为准。
+1. 初版 PDF 与生成器仅保留在本地历史归档，保留当时接口与原始字节。当前讲解以 [张量教程](../learning/tensors.md) 和 [ScoreHead](../architecture/score-head.md) 为准。
 2. 用 attention/model/training 测试核查 pairs/tree 对齐、梯度与导出契约。
 3. 用 NFCorpus cookbook 运行质量和性能评测；任何实际结果应带数据与模型版本，独立于教学示意数字报告。

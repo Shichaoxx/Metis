@@ -1,6 +1,6 @@
 # Metis · 墨提斯
 
-Metis 是一个任务专用后训练工具包。项目从 decoder-only 列排序开始，面向打分、排序、选择和分类等有明确输入与评价方式的任务。训练好的模型直接返回分数、类别或候选 ID，供程序和 Agent workflow 调用。
+Metis 面向需要在 Agent 和业务流程中使用专用模型的开发者，提供排序、选择和分类任务的后训练、评测与调用工具。
 
 目前主要适配 Qwen3：Base 模型可以接独立 ScoreHead，Reranker 则沿用 yes/no 读出。Python 包和命令行统一使用 `metis`。
 
