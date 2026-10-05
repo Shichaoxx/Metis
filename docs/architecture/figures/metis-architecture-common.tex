@@ -1,0 +1,146 @@
+% Shared geometry and bilingual labels for the Metis architecture figure.
+% The two entry points select labels only; module and edge geometry is shared.
+\documentclass[tikz,border=1.5mm]{standalone}
+\usepackage[UTF8,fontset=fandol]{ctex}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,backgrounds}
+\usepackage{hyperref}
+\hypersetup{pdfauthor={},pdftitle={Metis architecture},pdfsubject={},pdfkeywords={},pdfcreator={XeLaTeX}}
+\definecolor{Ink}{HTML}{263441}
+\definecolor{Muted}{HTML}{596675}
+\definecolor{Border}{HTML}{BCC6CD}
+\definecolor{Data}{HTML}{397C9C}
+\definecolor{Model}{HTML}{4B8B80}
+\definecolor{Task}{HTML}{AE783B}
+\definecolor{Training}{HTML}{AD5B68}
+\definecolor{Artifact}{HTML}{7B719A}
+\newcommand{\lang}[2]{\ifMetisChinese#2\else#1\fi}
+\newcommand{\Small}{\linespread{1}\fontsize{8.4}{10.2}\selectfont}
+\newcommand{\Label}{\linespread{1}\fontsize{9}{11}\selectfont}
+\newcommand{\Title}{\linespread{1}\fontsize{9.5}{11.5}\selectfont\bfseries}
+\newsavebox{\ModuleLabel}
+\newcommand{\Module}[8]{%
+  \node[box,draw=#2!65,fill=#2!5,minimum width=#5cm,minimum height=#6cm] (#1) at (#3,#4) {};
+  \node[inner sep=0pt] at (#1.center) {%
+    \sbox{\ModuleLabel}{\shortstack[c]{{\Label\bfseries #7}\\[2pt]{\Small\color{Muted}\shortstack[c]{#8}}}}%
+    \ifdim\wd\ModuleLabel>\dimexpr#5cm-6pt\relax
+      \PackageWarning{metis-architecture}{Label #1 exceeds its module width}\fi
+    \ifdim\dimexpr\ht\ModuleLabel+\dp\ModuleLabel\relax>\dimexpr#6cm-4pt\relax
+      \PackageWarning{metis-architecture}{Label #1 exceeds its module height}\fi
+    \usebox{\ModuleLabel}};}
+\newcommand{\Panel}[3]{%
+  \node[anchor=west,font=\Title] at (0,#2) {(#1)\enspace #3};
+  \draw[Border,line width=.35pt] (0,#2-.25) -- (17.7,#2-.25);}
+\newcommand{\LegendItem}[4]{%
+  \node[draw=#1!65,fill=#1!10,minimum width=7pt,minimum height=7pt,inner sep=0pt] at (#2,#3) {};
+  \node[anchor=west,font=\Small] at (#2+.18,#3) {#4};}
+\begin{document}
+\sffamily
+\begin{tikzpicture}[x=1cm,y=1cm,text=Ink,font=\Label,
+  box/.style={rounded corners=1.5pt,line width=.55pt,inner sep=0pt},
+  flow/.style={-{Latex[length=1.6mm,width=1.15mm]},draw=Ink,line width=.65pt},
+  trainflow/.style={-{Latex[length=1.6mm,width=1.15mm]},draw=Training,line width=.65pt,dash pattern=on 2pt off 1.5pt},
+  artifactflow/.style={-{Latex[length=1.6mm,width=1.15mm]},draw=Artifact,line width=.65pt},
+  note/.style={font=\Small,text=Muted,align=center,fill=white,inner sep=1.5pt}]
+\path[use as bounding box] (0,0) rectangle (17.7,12.35);
+\begin{scope}[on background layer]
+  \fill[white] (0,0) rectangle (17.7,12.35);
+\end{scope}
+
+% (a) Shared candidate-scoring path. The model adapters are alternatives.
+\Panel{a}{12.1}{\lang{Shared scoring architecture}{共享评分架构}}
+\node[anchor=east,font=\Small,text=Muted] at (17.7,12.1)
+  {\lang{Configured by recipe}{由训练配方配置}};
+\node[box,draw=Data!65,fill=Data!5,minimum width=2.7cm,minimum height=2.35cm] (sample) at (1.4,10.1) {};
+\node[font=\Label\bfseries] at (1.4,10.92) {\lang{Task sample}{任务样本}};
+\node[font=\Small,text=Muted] at (1.4,10.45) {\lang{Query + context}{查询与上下文}};
+% Original candidate-card glyph: IDs remain associated with candidate text.
+\foreach \y/\id in {10.02/1,9.66/2,9.30/n}{
+  \draw[Data!50,line width=.4pt,fill=white] (.37,\y-.13) rectangle (2.43,\y+.13);
+  \node[font=\fontsize{7.5}{8}\selectfont,text=Data] at (.69,\y) {$c_{\id}$};
+  \draw[Data!60,line width=.6pt] (1.03,\y) -- (2.20,\y);
+}
+\node[box,draw=Data!65,fill=Data!5,minimum width=2.85cm,minimum height=2.35cm] (compiler) at (4.75,10.1) {};
+\node[font=\Label\bfseries] at (4.75,10.92) {\lang{Input compiler}{输入编译器}};
+\node[font=\Small,text=Muted,align=center] at (4.75,10.15)
+  {\lang{Tokens + positions\\Pairs / dense tree\textsuperscript{*}}{分词与逻辑位置\\成对输入 / 稠密树\textsuperscript{*}}};
+\foreach \x in {3.80,4.13,4.46,4.79,5.12,5.45}{
+  \draw[Data!60,fill=Data!12,line width=.4pt] (\x,9.49) rectangle ++(.27,.24);
+}
+\node[font=\Small,text=Muted] at (4.75,9.18) {eager / SDPA};
+\draw[flow] (sample.east) -- (compiler.west);
+
+\draw[box,draw=Border,dash pattern=on 3pt off 2pt] (6.75,8.86) rectangle (13.9,11.52);
+\node[font=\Label\bfseries,fill=white,inner xsep=5pt] at (10.325,11.52)
+  {\lang{Model adapter: choose one}{模型适配器：二选一}};
+\Module{base}{Model}{8.38}{10.66}{2.7}{1.03}{Qwen3 Base}{\lang{Backbone}{解码器基座}}
+\Module{head}{Task}{12.22}{10.66}{2.8}{1.03}{MLP ScoreHead}{\lang{Scalar logit}{独立标量评分头}}
+\Module{reranker}{Model}{8.38}{9.43}{2.7}{1.03}{Qwen3 Reranker}{\lang{Backbone}{解码器基座}}
+\Module{yesno}{Task}{12.22}{9.43}{2.8}{1.03}{\lang{Yes/no readout}{Yes/no 读出}}{$\ell_{\mathrm{yes}}-\ell_{\mathrm{no}}$}
+\draw[flow] (base.east) -- (head.west);
+\draw[flow] (reranker.east) -- (yesno.west);
+\coordinate (adapterinput) at (6.48,10.1);
+\draw[draw=Ink,line width=.65pt] (compiler.east) -- (adapterinput);
+\draw[flow] (adapterinput) |- (base.west);
+\draw[flow] (adapterinput) |- (reranker.west);
+\coordinate (adapteroutput) at (14.23,10.1);
+\draw[draw=Ink,line width=.65pt] (head.east) -| (adapteroutput);
+\draw[draw=Ink,line width=.65pt] (yesno.east) -| (adapteroutput);
+\node[box,draw=Task!65,fill=Task!5,minimum width=2.75cm,minimum height=2.35cm] (scores) at (16.15,10.1) {};
+\node[font=\Label\bfseries] at (16.15,10.92) {\lang{Candidate scores}{候选分数}};
+\node[font=\Small,text=Muted,align=center] at (16.15,10.07)
+  {$c_1\!:\,s_1\quad c_2\!:\,s_2$\\[3pt]$\cdots\quad c_n\!:\,s_n$};
+\node[font=\Small,text=Muted] at (16.15,9.29) {\lang{Raw logits}{原始 logits}};
+\draw[flow] (adapteroutput) -- (scores.west);
+\node[anchor=west,font=\Small,text=Muted] at (0,8.57)
+  {\lang{\textsuperscript{*} Dense tree is a correctness reference; real training is validated with pairs/SDPA.}{\textsuperscript{*} 稠密树用于正确性对照；真实训练已验证成对输入 / SDPA 路径。}};
+
+% (b) Training. Labels bypass the scorer; dev selection is ranking-only.
+\Panel{b}{8.03}{\lang{Supervised training}{监督训练}}
+\Module{traindata}{Data}{1.4}{6.58}{2.7}{1.3}{\lang{Training data}{训练数据}}{\lang{Samples + labels}{样本与标签}}
+\Module{trainscorer}{Model}{4.75}{6.58}{2.65}{1.3}{\lang{Scorer (a)}{评分器 (a)}}{\lang{With gradients}{保留梯度}}
+\Module{objective}{Task}{8.38}{6.58}{3.15}{1.3}{\lang{Task objective}{任务目标}}{\lang{Ranking / choice\\Multi-label}{排序 / 单选 / 多标签}}
+\Module{trainer}{Training}{12.22}{6.58}{2.8}{1.3}{\lang{Trainer + PEFT}{Trainer + PEFT}}{\lang{Full / LoRA}{全量 / LoRA}}
+\Module{export}{Artifact}{16.15}{6.58}{2.75}{1.3}{\lang{Sealed exports}{可校验产物}}{\lang{Model + task\\Tokenizer}{模型与任务\\分词器}}
+\draw[flow] (traindata.east) -- (trainscorer.west);
+\draw[flow] (trainscorer.east) -- (objective.west);
+\draw[flow] (objective.east) -- node[note,above] {\lang{loss}{损失}} (trainer.west);
+\draw[artifactflow] (trainer.east) -- node[note,above] {final} (export.west);
+\draw[trainflow] (trainer.north) -- ++(0,.31) -| (trainscorer.north);
+\node[note] at (8.38,7.54) {\lang{Parameter update}{更新参数}};
+\draw[trainflow] (traindata.south) -- ++(0,-.39) -| (objective.south);
+\node[note] at (4.75,5.54) {\lang{Supervision}{监督标签}};
+\Module{devdata}{Data}{8.38}{4.63}{3.15}{1.18}{\lang{Complete dev split}{完整验证集}}{\lang{Candidates + qrels}{候选与完整标注}}
+\Module{selection}{Training}{12.22}{4.63}{2.8}{1.32}{\lang{Dev selection}{验证集选优}}{\lang{Ranking only\\nDCG@10}{仅排序任务\\nDCG@10}}
+\draw[flow] (devdata.east) -- (selection.west);
+\draw[trainflow] (trainer.south) -- (selection.north);
+\draw[artifactflow] (selection.east) -| node[note,pos=.42,above] {best} (export.south);
+\node[align=left,anchor=west,font=\Small,text=Muted] at (.15,4.63)
+  {\lang{Checkpoint + resume\\Run configuration + logs}{检查点与恢复\\运行配置与日志}};
+
+% (c) Inference. The exported contract selects the adapter and task policy.
+\Panel{c}{3.53}{\lang{Inference and application integration}{推理与应用接入}}
+\Module{request}{Data}{1.6}{2.53}{3.05}{1.04}{\lang{New task sample}{新任务样本}}{\lang{Query + candidates}{查询与候选}}
+\Module{artifactinput}{Artifact}{1.6}{1.29}{3.05}{1.04}{\lang{Export from (b)}{来自 (b) 的产物}}{\lang{Model + task}{模型与任务契约}}
+\Module{predictor}{Model}{6.02}{1.91}{3.45}{1.55}{Predictor}{\lang{Verify + load\\Score with (a)}{校验与加载\\复用 (a) 评分}}
+\Module{decision}{Task}{10.87}{1.91}{3.55}{1.55}{\lang{Task decision}{任务决策}}{\lang{Sort / argmax\\Logit threshold}{排序 / 最大值\\Logit 阈值}}
+\Module{result}{Artifact}{15.78}{1.91}{3.65}{1.55}{\lang{Structured result}{结构化结果}}{\lang{Scores + stable IDs\\Agent / workflow}{分数与稳定候选 ID\\Agent / 业务流程}}
+\draw[flow] (request.east) -- ++(.54,0) |- ($(predictor.west)+(0,.3)$);
+\draw[artifactflow] (artifactinput.east) -- ++(.54,0) |- ($(predictor.west)+(0,-.3)$);
+\draw[flow] (predictor.east) -- (decision.west);
+\draw[flow] (decision.east) -- (result.west);
+
+% One shared baseline for swatches and labels; identical across languages.
+\draw[Border,line width=.35pt] (0,.64) -- (17.7,.64);
+\LegendItem{Data}{.16}{.28}{\lang{Data}{数据}}
+\LegendItem{Model}{2.04}{.28}{\lang{Model}{模型}}
+\LegendItem{Task}{4.16}{.28}{\lang{Task logic}{任务逻辑}}
+\LegendItem{Artifact}{7.03}{.28}{\lang{Artifact / output}{产物 / 输出}}
+\draw[flow] (11.05,.28) -- (11.63,.28);
+\node[anchor=west,font=\Small] at (11.76,.28) {\lang{Forward / export}{前向 / 导出}};
+\node[draw=Training!65,fill=Training!10,minimum width=7pt,minimum height=7pt,inner sep=0pt] at (14.65,.28) {};
+\draw[trainflow] (14.94,.28) -- (15.41,.28);
+\node[anchor=west,font=\Small] at (15.54,.28) {\lang{Training only}{仅训练}};
+\end{tikzpicture}
+\end{document}

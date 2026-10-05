@@ -2,33 +2,29 @@
 
 **模型读完 query 和一个候选，直接给出一个可训练的相关性分数。** 这个分数可以用于列排序、候选选择或下游 workflow；整个路径不调用 `generate()`，不要求模型输出自然语言，也不依赖 yes/no 词表读出。
 
-本文对应 Metis 新增的 `qwen3_score_head` 适配器。项目目标见 [CORE](../project/core.md)，实现见 [模型](../../src/metis/model.py)、[输入编译](../../src/metis/compiler.py) 和 [模型工厂](../../src/metis/model_registry.py)。Tree Mask 与张量化讲解受到五道口纳什教学资料启发，来源及边界见 [ACKNOWLEDGEMENTS](../../ACKNOWLEDGEMENTS.md)。
+本文对应 Metis 的 `qwen3_score_head` 适配器。项目目标见[核心设计](../project/core.md)，实现见[模型](../../src/metis/model.py)、[输入编译](../../src/metis/compiler.py)和[模型工厂](../../src/metis/model_registry.py)。Tree Mask 与张量化讲解受到五道口纳什教学资料启发，来源见[致谢](../../ACKNOWLEDGEMENTS.md)。
+
+以下两图展开首轮排序配方的架构与张量变化。`b` 是候选微批大小，`N` 是单个 query 的全部候选数；图中的色块示意轴结构，不代表实际维数或实验数值。两图统一配色：青色为离散输入或二值支持，紫色为隐藏激活，橙色为 Head 参数，红色为 raw logits 或损失，灰色为位置、标签或字符串列表。训练图的差分矩阵另用红、紫、白表示正、负、零；红色虚线表示反向梯度。
+
+## 训练张量流
+
+输入经 Base 和独立 ScoreHead 得到候选分数，汇总当前 query 的微批后计算监督损失；这些微批的计算图保留到反向传播。反向传播更新 q/k/v/o 的 LoRA 与 Head；Base 参数冻结，激活仍参与求导。
+
+![Metis 训练架构、张量形状与反向梯度](figures/metis-tensor-training.png)
+
+[矢量 PDF](figures/metis-tensor-training.pdf) · [可编辑 LaTeX](figures/metis-tensor-training.tex)
+
+## 推理张量流
+
+同一架构在 `eval()` 和 `no_grad()` 下运行。所有候选的 raw logits 按输入顺序拼接，再转换成 Python 分数，排序并返回字符串 ID；Workflow 按 ID 查回候选文本。
+
+![Metis 推理架构、张量形状与候选选择](figures/metis-tensor-inference.png)
+
+[矢量 PDF](figures/metis-tensor-inference.pdf) · [可编辑 LaTeX](figures/metis-tensor-inference.tex)
 
 ## 一次前向，三个张量
 
 当前[训练配方](../../recipes/nfcorpus/qwen3_base_score_head_06b.json)使用 **Qwen3-0.6B-Base + 256 维 MLP**。基座通过 `AutoModel` 加载，不附带 LM head；MLP 是新建、需要训练的任务头。**本轮训练使用 pairs/SDPA；tree 是单独的正确性预检，没有参与这轮训练质量或加速对照。**
-
-```text
-token IDs / mask / position IDs
-             │
-             ▼
-       Qwen3 backbone
-     hidden: [B, L, D]
-             │  按候选的 (batch row, readout position) 取值
-             ▼
-   candidate states: [C, D]
-             │
-       Linear(D → 256)
-             │
-            GELU
-             │
-       Linear(256 → 1)
-             ▼
-       scores: [C]
-             │  按稳定 candidate ID 还原
-             ▼
-      排序 / 选择 / workflow
-```
 
 `B` 是一次 backbone 前向的物理 batch 大小，`L` 是该执行块的 token 长度，`D` 来自模型配置，`C` 是该块的有效候选数。它们不等于训练时的业务 query batch：pairs 可以一次放多个独立序列；tree 通常是一个物理序列包含多个候选分支。分块结果最终按输入候选顺序拼回。
 
@@ -85,7 +81,7 @@ B         ✓          ×        causal
 
 每个分支从同一个 prefix 长度续编 position IDs；RoPE 使用这些逻辑位置。仅修改 mask、仍沿用物理 offset，不能保持与独立 pairs 相同的位置关系。
 
-Tree 在**一个物理 chunk 内**复用前缀的隐藏状态和 K/V 计算，多个 chunk 会重算前缀。当前后端仍是 eager/SDPA 上的 dense mask；mask 中屏蔽一个区域，不代表算子必然跳过该区域的计算。这里没有加速承诺。更完整的 attention、位置与梯度推导见 [张量教程](../learning/tensors.md)；其中 yes/no 读出应与本文的 MLP 路径分开理解，旧 PDF 保留历史快照。
+Tree 在**一个物理 chunk 内**复用前缀的隐藏状态和 K/V 计算，多个 chunk 会重算前缀。当前后端仍是 eager/SDPA 上的 dense mask；屏蔽区域不一定被算子跳过，性能收益尚待测量。完整的 attention、位置与梯度推导见[张量教程](../learning/tensors.md)，其中的 yes/no 读出与本文的 MLP 路径分别对应两种适配器。
 
 ## loss 如何训练 head 与 LoRA
 
@@ -118,9 +114,7 @@ LoRA 模式只包装 backbone，`score_head` 保持独立且可训练。本配�
 
 Tree 中各分支对公共前缀的梯度会相加；在相同输入、相同逻辑位置且无随机 dropout 等差异时，应与独立 pairs 的对应梯度近似一致。full 训练同样有代码路径；具体使用哪种更新方式由配方决定。
 
-## 现在支持什么，已经证明什么
-
-
+## 正确性检查与训练结果
 
 | 检查 | 最大绝对差 |
 |---|---:|

@@ -17,6 +17,8 @@ fixture_spec.loader.exec_module(fixture)
 
 
 def test_graded_labels_and_unknowns():
+    from metis.tasks.objectives import supervised_loss as task_loss
+    assert supervised_loss is task_loss
     sample = fixture.sample_records()[0]
     sample['candidates'].append({'id': 'unknown', 'text': 'water'})
     sample['supervision']['labels'] = {'d1': 2, 'd2': 1}
@@ -25,6 +27,24 @@ def test_graded_labels_and_unknowns():
     loss.backward()
     assert scores.grad[2] == 0
     assert torch.isfinite(loss)
+
+
+def test_ranking_gradient_follows_graded_preferences():
+    sample = fixture.sample_records()[0]
+    sample['supervision']['labels'] = {'d1': 2, 'd2': 1}
+    scores = torch.zeros(2, requires_grad=True)
+    loss = supervised_loss(scores, sample, bce_weight=0.0, pairwise_weight=1.0)
+    loss.backward()
+    # Both candidates are relevant, but ranking must still favor the higher grade.
+    assert scores.grad[0] < 0 < scores.grad[1]
+    torch.testing.assert_close(scores.grad.sum(), torch.tensor(0.0))
+
+    sample['supervision']['labels'] = {'d1': 1, 'd2': 1}
+    tied_scores = torch.zeros(2, requires_grad=True)
+    tied_loss = supervised_loss(tied_scores, sample, bce_weight=0.0, pairwise_weight=1.0)
+    tied_loss.backward()
+    assert tied_loss.item() == 0.0
+    torch.testing.assert_close(tied_scores.grad, torch.zeros(2))
 
 
 def test_multilabel_and_single_choice_objectives():

@@ -1,41 +1,37 @@
 # Metis · 墨提斯
 
-Metis 面向需要在 Agent 和业务流程中使用专用模型的开发者，提供排序、选择和分类任务的后训练、评测与调用工具。
+**English** | [简体中文](README.zh-CN.md)
 
-目前主要适配 Qwen3：Base 模型可以接独立 ScoreHead，Reranker 则沿用 yes/no 读出。Python 包和命令行统一使用 `metis`。
+Metis is a task-specific post-training toolkit: train models that take queries, context and candidates, then return scores and candidate IDs for agents and applications.
 
-## 能做什么
+- Fine-tune Qwen3 Base with an independent ScoreHead using LoRA or full fine-tuning. A separate Qwen3 Reranker adapter supports yes/no readout.
+- Track data versions, select checkpoints on validation data, and export models with integrity checks.
+- Load exported models through `Predictor` for ranking, single-choice or multi-label candidate selection.
 
-- 用 full fine-tuning 或 LoRA 训练模型，再按 validation 指标选择 checkpoint。
-- 使用 pairs 或 dense tree 输入，支持 eager 和 SDPA。当前 tree 使用 dense mask，主要用于核对计算语义，还没有稀疏加速。
-- 保存和加载训练产物，通过 Predictor 或开发用 HTTP 接口调用。
-- 参考 NFCorpus 配方完成训练、评测，并将模型接入 Agent workflow。
+The architecture baseline is **v1.0**. Complete evaluation, candidate sampling and dev-set checkpoint selection currently support ranking only. Real training has been validated with pairs/SDPA; dense tree is a correctness reference. RL, multi-GPU training and sparse backends are not implemented.
 
-通用任务与模型注册接口、稀疏 attention、强化学习和多卡训练目前还没有实现。
+## Architecture
 
-## NFCorpus 首轮结果
+Data preparation, input compilation, model readout, training and inference share the same candidate IDs and input contract.
 
-我们用 NFCorpus 跑完了首轮 ScoreHead 微调，包括训练、模型选择、重载和一次 Agent workflow 调用。
+![Metis toolkit architecture](docs/architecture/figures/metis-architecture-en.png)
 
-| 模型 | Test nDCG@10 |
-|---|---:|
-| Qwen3-Reranker-0.6B | 0.3548 |
-| Qwen3-0.6B-Base + ScoreHead + LoRA | 0.2910 |
+[Full-size PNG](docs/architecture/figures/metis-architecture-en.png) · [PDF](docs/architecture/figures/metis-architecture-en.pdf) · [Architecture guide](docs/architecture/framework.md)
 
-ScoreHead 这次没有超过 reranker。两边使用不同的读出、输入模板和训练设置，这组分数只能作为当前方案的阶段性对比。
+## Quick start
 
-## 安装
-
-需要 Python 3.10 或更新版本。安装训练依赖后查看命令行帮助：
+Python 3.10 or newer is required.
 
 ```bash
+git clone https://github.com/Shichaoxx/Metis.git
+cd Metis
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[train,peft]"
 metis --help
 ```
 
-## 调用模型
+After training and exporting a model:
 
 ```python
 from metis import Predictor
@@ -44,17 +40,48 @@ predictor = Predictor("path/to/run/exports/best")
 results = predictor.predict(samples, top_k=5)
 ```
 
-样本格式见[使用指南](docs/usage/getting-started.md)。
+See the [usage guide](docs/usage/getting-started.md) for the `samples` format and the [NFCorpus cookbook](cookbooks/score-head-plan.md) for training. Model weights and datasets are downloaded separately.
 
-## 文档
+## Tensor walkthroughs
 
-- [安装与使用](docs/usage/getting-started.md)
-- [NFCorpus cookbook](cookbooks/score-head-plan.md)
-- [模型与 ScoreHead](docs/architecture/score-head.md)
-- [张量教程](docs/learning/tensors.md)
-- [示例](examples/README.md)
-- [贡献指南](CONTRIBUTING.md)
+These diagrams follow the first Qwen3-0.6B-Base + ScoreHead + LoRA recipe, showing tensor shapes, operations and color legends. Labels are in Chinese; the [model guide](docs/architecture/score-head.md) explains the notation.
 
-## 许可与致谢
+### Training
 
-仓库目前没有 LICENSE 文件，源码再分发许可尚未设定。NFCorpus、Qwen 模型和软件依赖沿用各自许可。Tree Mask 的学习参考见[来源与致谢](ACKNOWLEDGEMENTS.md)。
+Candidate batches pass through the backbone and ScoreHead. Query-level losses update LoRA and head parameters while the base weights remain frozen.
+
+![Metis training tensor flow](docs/architecture/figures/metis-tensor-training.png)
+
+[Full-size PNG](docs/architecture/figures/metis-tensor-training.png) · [PDF](docs/architecture/figures/metis-tensor-training.pdf)
+
+### Inference
+
+The exported model scores candidates without gradients. Scores are mapped back to candidate IDs, ranked and selected for downstream use.
+
+![Metis inference tensor flow](docs/architecture/figures/metis-tensor-inference.png)
+
+[Full-size PNG](docs/architecture/figures/metis-tensor-inference.png) · [PDF](docs/architecture/figures/metis-tensor-inference.pdf)
+
+## NFCorpus results
+
+The first cookbook covers two training epochs, model selection on the complete dev set, one test evaluation of the selected model, export/reload and a workflow that assembles evidence from ranked documents.
+
+| Model | Test nDCG@10 |
+|---|---:|
+| Qwen3-Reranker-0.6B | 0.3548 |
+| Qwen3-0.6B-Base + ScoreHead + LoRA | 0.2910 |
+
+The ScoreHead configuration scored below the original reranker. The models differ in readout, input templates and training history, so this is a comparison of complete methods, not an ablation. See the [evaluation protocol](cookbooks/score-head-plan.md) for data and measurement details.
+
+## Documentation
+
+Most detailed documentation is currently in Chinese.
+
+- [Documentation index](docs/README.md)
+- [Implementation status](docs/project/status.md)
+- [Examples](examples/README.md)
+- [Contributing](CONTRIBUTING.md)
+
+## Author and license
+
+Created by [shichao](https://github.com/Shichaoxx). This repository currently has no `LICENSE` file. Data, models and dependencies retain their respective licenses; teaching and method references are listed in [Acknowledgements](ACKNOWLEDGEMENTS.md).

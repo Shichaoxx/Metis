@@ -1,4 +1,4 @@
-include README.md CONTRIBUTING.md ACKNOWLEDGEMENTS.md
+include README.md README.zh-CN.md CONTRIBUTING.md ACKNOWLEDGEMENTS.md
 include docs/README.md
 recursive-include src *.py
 recursive-include tests *.py *.md
@@ -6,6 +6,7 @@ recursive-include examples *.py *.md
 recursive-include recipes *.json *.md
 recursive-include cookbooks *.md
 recursive-include docs/architecture *.md
+recursive-include docs/architecture/figures *.tex *.pdf *.png *.json
 recursive-include docs/development *.md
 recursive-include docs/learning *.md
 recursive-include docs/project *.md

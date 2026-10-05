@@ -45,7 +45,7 @@ python -m pip install -e '.[train,peft]'
 
 任务种类由 manifest/config 定义，`task_id` 标识业务任务，尚不是通用插件入口。未知标签不自动等于负例；labels、metadata、gold qrels 不进入模型文本。
 
-数据集 manifest 保存 split 路径、数量及内容哈希；相对路径按 manifest 解析。配置相对自身位置解析，未知字段报错。已有冻结数据不重复准备或覆盖；新数据流程见 [NFCorpus 数据说明](../../cookbooks/nfcorpus.md)。
+数据集 manifest 保存 split 路径、数量及内容哈希；相对路径按 manifest 解析。配置相对自身位置解析，未知字段报错。复现实验使用固定版本的数据；新数据准备流程见 [NFCorpus 数据说明](../../cookbooks/nfcorpus.md)。
 
 ## 使用训练产物
 

@@ -22,7 +22,7 @@ metis dataset register nfcorpus-bm25 data/nfcorpus-bm25/manifest.json
 metis validate data/nfcorpus-bm25/manifest.json
 ```
 
-已有数据时去掉 `--download`。准备器检查 archive 大小、成员和文件哈希。新准备的数据保存自己的 manifest；首轮实验继续使用原有冻结数据，避免覆盖历史身份。
+已有数据时去掉 `--download`。准备器检查 archive 大小、成员和文件哈希。每次准备的数据保存独立 manifest；复现首轮实验时需核对其文件哈希。
 
 BM25 使用 `title + newline + text`，小写后按 `[a-z0-9]+` 分词，`k1=1.2`、`b=0.75`，不做 stemming 或停用词过滤。每个查询词贡献一次，IDF 为 `log(1 + (N - df + 0.5) / (df + 0.5))`。候选按分数降序、文档 ID 升序排列，不足 top50 时补零分文档。这是本地参考实现。
 

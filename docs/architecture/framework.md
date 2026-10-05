@@ -1,74 +1,114 @@
-# 现有原型设计与经验转化
+# 框架设计
 
-本文解释 Metis 的现有代码（工程标识仍为 `metis`），不代表通用后训练 Kit 已完成。产品要求以 [CORE](../project/core.md) 为准，验证范围与缺口见 [工作盘点](../project/status.md)。当前已接通 Qwen3 yes/no 与 Qwen base + ScoreHead；模型工厂用于训练和 Predictor 加载。真实微调执行状态见工作盘点。
+Metis 将候选打分任务拆为数据、任务目标、输入编译、模型读出、训练和调用。当前实现包含 Qwen3 Base + ScoreHead 和 Qwen3 Reranker yes/no 两种适配器；通用 task/objective/backend 插件协议尚未实现。项目目标见[核心设计](../project/core.md)，验证范围见[项目状态](../project/status.md)。
 
-设计来源：个人列排序工程经验，以及五道口纳什的视频和 [modern_genai_bilibili](https://github.com/wdkns/modern_genai_bilibili) 中关于 Jev / Tree Mask 的教学资料。具体来源、参考版本与独立实现范围见 [来源致谢](../../ACKNOWLEDGEMENTS.md)。框架组合与工程实现的价值，不等于相关 attention 方法的首创。
+候选打分接口统一排序、单选与多选任务。共享前缀与 Tree Mask 的教学参考见[来源致谢](../../ACKNOWLEDGEMENTS.md)。源码与合成示例为独立实现。
 
-## 定位与任务边界
+## 架构总览
 
-Agent 可按执行职责理解为：通用模型 + Harness + 任务能力与资源。环境、Memory、Skills、MCP 工具是不同层次的资源与接口，不需要硬塞进一个统一的模型层。Metis 位于任务能力层：输入业务状态与候选，输出分数、候选 ID、是否拒绝决定。它可以是本地函数、服务或工具，由 Harness 决定何时调用。
+以下图稿描述架构 v1.0：当前模型读出、候选可见性和评分契约保持固定。训练方法与执行后端的扩展另列于文末，不属于图中已实现路径。
 
-`SystemOne` 是这里给任务模型的产品定位，并非 Jev 官方架构的复现声明。最小任务可表示为 `f(query, context, candidates) -> scores`。ranking 用 BCE + pairwise softplus，multi_label 用 BCE，single_choice 用候选间 CE。现有接口不生成自然语言理由；它也不能独立完成长程计划、任意工具操作或环境交互。
+![Metis toolkit architecture](figures/metis-architecture-en.png)
 
-## 从列排序经验抽取稳定设计
+[英文 PDF](figures/metis-architecture-en.pdf) · [中文 PDF](figures/metis-architecture-zh.pdf) · [中文预览](figures/metis-architecture-zh.png) · [英文源文件](figures/metis-architecture-en.tex) · [中文源文件](figures/metis-architecture-zh.tex)
 
-这部分将用户在 llm_ranker 上提出的经验转成框架要求；没有把企业代码、训练数据或内部评测复制进新项目。原项目详细复盘在个人学习仓库，本文只保留通用工程结论。
+图中分别展示共享评分路径、监督训练和产物推理。两种模型适配器是替代选择，训练与推理复用相同的输入编译和评分接口。完整 dev 选优适用于 ranking；单选、多选已有损失与决策实现。英文和中文使用同一几何布局，仅替换标签。逐张量的维度与梯度另见 [ScoreHead](score-head.md)。
 
-| 经验/问题 | 框架处理 | 收益 |
+## 组件与接口
+
+| 组件 | 职责 | 当前实现 |
 |---|---|---|
-| 列本身有稳定业务身份 | 每个候选有唯一 ID | 调序、分块后仍能准确对齐分数 |
-| 数据预处理与训练 prompt 容易漂移 | 训练/评测/推理复用 compiler | 输入模板、tokenizer 和截断可追溯 |
-| JSONL 字段靠约定，缺失标注易变成负例 | schema_version、显式 labels、unjudged policy | 错误及早暴露；区分训练假设与判断事实 |
-| 数据文件版本不明确 | manifest + 文件 SHA-256 + registry | 防止静默替换评测集 |
-| 路径与产物靠脚本硬编码 | 配置相对路径、run ID、checkpoint/export分工 | 训练恢复与部署加载不互相混淆 |
-| 日志只显示 loss，缺少谱系 | config、environment、事件、数据/模型版本 | 能解释一次实验用了什么 |
-| decoder 串联候选造成方向性依赖 | pairs基线与tree分支隔离、统一逻辑位置 | 独立候选具有相同注意力可见性规则 |
-| 调用方需要稳定的任务输出 | ScoreHead/yes-no 等读出统一转 scores、ID 和状态；当前已接通两种读出 | Harness直接消费结构化结果 |
+| 数据与配置 | 固定输入、监督及实验身份 | JSONL schema、manifest、内容哈希、相对路径解析、DatasetRegistry |
+| 任务目标与决策 | 定义监督损失及分数到选择结果的转换 | `tasks/objectives.py`、`tasks/decisions.py`；内置 ranking、multi_label、single_choice |
+| 输入编译 | 统一训练与推理的 token、读出位置和截断规则 | pairs 与 dense tree；Qwen3 模板 |
+| 模型与读出 | 将候选映射为标量分数 | Qwen3 Base + 独立 MLP ScoreHead；Qwen3 Reranker yes/no；显式模型工厂 |
+| 训练与产物 | 优化、验证、恢复和导出 | HF Trainer、full/LoRA、独立 head 学习率、checkpoint、best/final export |
+| 调用与决策 | 将分数转换为稳定的候选结果 | Predictor、候选 ID、TopK/单选/多选、开发用 HTTP 服务 |
 
-这不是逐行代码移植。新代码从公共依赖和上述接口要求独立编写，列排序示例也只使用合成字段。
+数据、配置、注册、日志与 IR 指标使用标准库；模型和训练复用 Transformers、HF Trainer 与 PEFT。`Registry` 提供显式注册和重复名称检查，模型工厂已接入两个 Qwen3 适配器的训练与加载。task/objective/backend 仍是固定实现分支，没有通用注册协议或自动插件发现。
 
-## 从原工程保留什么，改善什么
+任务层与运行层分开维护：损失函数不负责 checkpoint 和模型加载，决策函数不依赖 Torch。`training.py` 调用任务目标，`api.Predictor` 调用任务决策；原有导入接口保持兼容。源码身份记录递归覆盖所有 Python 子模块。
 
-只读核查原列排序工程时，模型工厂已经提供 `score_head` 和 `yesno`，默认使用 `score_head`。ScoreHead 读取候选位置的 backbone hidden states 后经 MLP 得分，目标函数从外部注入；这些是值得保留的设计，不应因新原型选了预训练 reranker 而丢失。这里提炼接口经验，不迁移企业源码或数据。
+## 任务与输出
 
-| 原工程经验 | 在工具包中应保留或改善的方向 | 当前原型的位置 |
+当前任务接口为 `f(query, context, candidates) -> scores`，每个候选具有稳定 ID 和一个分数。
+
+| 任务 | 监督目标 | 决策方式 |
 |---|---|---|
-| 两种读出有明确模型工厂 | 基座、head/readout、loss 分开适配 | 已有 Qwen3 yes/no、Qwen base + ScoreHead，以及显式 model registry |
-| 可训练的候选分数与外部损失 | 保留非生成监督任务，允许任务选择 BCE/排序/分类目标 | 当前已有固定目标分支，尚非可注册的 Objective 体系 |
-| 列 ID 与候选读出位置 | 在训练、分块、评测、调用之间稳定对齐 | 已有 candidate ID、compiler 和输出对齐约定 |
-| 数据、路径和输出依赖脚本约定 | 明确 schema、相对路径、run、checkpoint 与 export 层级 | 已有基础实现；不因此声称所有业务格式均已适配 |
-| 业务系统调用排序模块 | 独立 Predictor/服务承载模型，Harness 组织业务流程 | 已有tiny合成示例及真实训练best的workflow调用；下游组装证据已验证，最终答案/业务收益未验证 |
+| `ranking` | BCE + pairwise softplus | 按分数排序，可指定 TopK 或最低分数 |
+| `multi_label` | BCE | 对各候选分数应用 sigmoid 与阈值 |
+| `single_choice` | 候选间交叉熵 | 选择最高分候选 |
+
+单选与多选沿用候选打分接口，没有独立的固定类别分类头。完整 IR 指标评测、训练候选采样和完整 dev 选优目前仅支持 `ranking`；单选、多选尚无真实任务 cookbook。sigmoid 输出的校准程度需要另行验证。
+
+训练、评测和推理复用输入编译器。候选重排、分块和合并后，分数仍与原始 ID 对齐；labels、qrels 和 metadata 不进入模型文本。现有接口返回分数、候选 ID 和决策状态，不生成自然语言理由。
 
 ## 输入语义与共享前缀
 
-独立 pair 序列为 `prefix + candidate_i + readout`。编译器先按完整官方模板分词，再寻找安全公共 token 前缀，防止分别分词导致边界 token 不一致。tree 中前缀看自身过去，分支看前缀和自身过去，读出不能看兄弟分支。
+独立 pair 序列为 `prefix + candidate_i + readout`。编译器先按完整模板分词，再寻找安全公共 token 前缀，避免分别分词改变边界 token。tree 中前缀可见自身过去，分支可见前缀和自身过去，读出不可见兄弟分支。
 
-各分支 position IDs 从公共前缀长度开始；“重新开始”指每个分支使用相同起点，不是无条件从 0 编号。树形排列的物理 offset 不能直接充当 RoPE 位置。超过物理长度限制时分块，每块都会重新计算前缀。
+各分支的 position IDs 从公共前缀长度续编，使用相同起点。树形排列的物理 offset 与 RoPE 逻辑位置分别处理。超过物理长度限制时分块，每块重新计算前缀。
 
-在 eval、相同输入且无 dropout 时，tree 与独立 pairs 应给出数值近似等价结果，候选置换只改变返回排列。训练时共享前缀的梯度自然累加；启用随机 dropout 后一次前向的随机图不要求逐元素相同，需区分结构正确性与随机训练轨迹。
+在 eval、相同输入且无 dropout 时，tree 与独立 pairs 应给出数值近似等价结果，候选置换只改变返回顺序。训练时共享前缀的梯度累加；启用 dropout 后，两种布局的单次随机前向不保证逐元素相同。
 
-## 薄框架与扩展顺序
+当前 tree 使用 dense mask，仅有小规模分数、梯度与换序正确性验证。首轮真实训练使用 pairs/SDPA，尚无 tree 训练质量或加速结果。
 
-核心数据、配置、注册、日志与 IR 指标用标准库；模型代码复用 Transformers、HF Trainer、PEFT。当前 DatasetRegistry 已接 CLI；Model Registry 已接通两个 Qwen3 适配器的训练/加载；通用 Registry 提供显式注册和重复名检查，task/objective/backend 尚未接通，不做自动插件发现。
+## 训练与产物约定
 
-增加新任务时先定义：候选是什么、标签语义、训练 loss、评测指标、推理决定及拒绝策略，然后实现适配器。schema linking 可沿用候选列与 ranking/multi_label；工具路由可用 single_choice/multi_label；有可定义动作与奖励的任务可考虑 RL，包括单步 contextual bandit 和多步交互；需要另行接入采样、反馈与优化目标，当前没有 RL trainer。
+- 每个候选对应一个有限数值分数，输出保留原始 ID。
+- 未判断标签与负例分开处理；train-only 正例注入和弱负例来源记录在数据中。
+- 验证、测试候选不按标准答案补全；零正例召回 query 仍计入完整指标。
+- manifest 记录数据哈希，注册表固定 manifest 身份；产物校验覆盖文件集合与内容。
+- checkpoint 恢复优化器、调度器、随机状态等训练进度，export 用于推理。`final` 保存末步状态；启用 selection 时，`best` 保存完整 dev nDCG@10 最优产物。
+- query 评测失败时，整次评测标记失败，不以成功子集替代完整结果。
+- yes/no 读出为 raw yes-minus-no logit，ScoreHead 返回 raw relevance logit；阈值与概率校准按任务验证。
 
-为了轻量，当前不重复实现分布式 launcher、GPU kernel 编译器、Trainer 优化器栈或完整 Agent runtime。相应功能缺口清楚列出，不能把接口草图写成已经支持。SFT 在这里是有监督任务后训练；当前不是通用聊天 SFT 数据格式。
+## v1.0 的完善方向
 
-## 核心不变量
+以下工作保持现有模型结构和候选打分接口，尚未完成的项目不构成当前能力声明。
 
-- 每个输入候选对应且只对应一个有限数值分数，保留原始 ID。
-- 标注、qrels、metadata 不进入模型输入。
-- 验证/测试候选不按标准答案补全；没有召回到正例的 query 也参与完整指标。
-- 显式 train-only 正例注入与弱负例有记录；不把 unknown 与 negative 隐式合并。
-- 数据文件修改使哈希失效；注册表 pin manifest；产物复制后校验文件集合与内容。
-- checkpoint 用于恢复优化进度；export用于推理。final 是末步状态；selection.enabled 时另外保存完整 dev nDCG@10 选出的 best。
-- 评测失败的 query 不从总体均值悄悄剔除；整次评测标记失败。
-- 当前 yes/no adapter 打分是 raw yes-minus-no logit；ScoreHead 返回 raw relevance logit。阈值与 calibration 需要任务验证，不默认宣称概率可靠。
+| 优先级 | 工作 | 验证方式 |
+|---|---|---|
+| 1 | 为单选、多选补齐评测、dev 选优和真实 cookbook | 单选 accuracy / macro-F1，多选 micro/macro-F1；固定候选与划分，独立报告零召回情况 |
+| 2 | 改善训练候选与监督质量 | 审计弱负例与未判断样本；固定候选召回后比较困难负例、损失权重和采样方案 |
+| 3 | 校准分数与拒答阈值 | 在独立校准数据或明确划分的 dev 子集拟合温度及阈值，报告 NLL、Brier、校准误差与覆盖率/错误率 |
+| 4 | 测量并优化执行开销 | 按候选数、前缀/分支长度报告端到端延迟、吞吐和峰值显存，分别统计编译、前向与决策 |
 
-## 性能路线
+评测指标随任务语义选择；排序分数不能未经验证就作为概率。所有超参数、校准与阈值选择只使用训练/验证数据，固定后再评估 test。新增实验记录新的配置和数据身份，保留已有 cookbook 的冻结结果。
 
-yes/no 适配器只投影两个词表行，ScoreHead 适配器只执行小型 MLP；两者均避免构造全词表 logits。当前采用 bounded pair batching 与 gradient checkpointing；query级loss仍保留全部候选的反传图，所以不能承诺峰值显存仅相当于一个小 batch。
+## 强化学习接入设计
 
-第三步才是实际树形稀疏后端。PyTorch SDPA 接口支持不意味着特定 GPU Flash kernel 接受任意 mask；本项目不把 dense 4D mask包装成FlashAttention加速。可研究 FlexAttention 的 block mask 或把前缀/分支 softmax 的局部统计用 log-sum-exp 精确合并。需要同时验证前向、参数梯度、padding、GQA、位置、dtype、dropout和实际CUDA吞吐。
+本节是后续训练扩展设计，当前没有 RL trainer。现有 `f(query, context, candidates) -> scores` 可以作为候选策略的打分器，无需改变 Qwen3 Base + ScoreHead 的前向结构。
 
+最小接入可从单步单选任务开始：对候选分数 `s` 计算 `softmax(s / temperature)`，按分布采样一个候选，执行后取得奖励，再用动作的 log-probability 构造策略梯度损失。这属于 contextual bandit：一次决策对应一次反馈；多步任务还需定义状态转移、终止条件与回报归因。[PyTorch 的 REINFORCE 示例](https://docs.pytorch.org/docs/stable/distributions.html#score-function)说明了采样与 log-probability 如何参与梯度估计。
+
+新增职责应位于评分模型之外：
+
+| 扩展职责 | 最小契约 |
+|---|---|
+| 候选策略 | scores 到动作分布；采样、有效候选 mask、动作 log-probability、推理决策 |
+| 反馈采集 | 输入及候选身份、实际动作、行为策略版本与采样概率、奖励、失败状态 |
+| 奖励定义 | 按任务计算成功率、质量或成本；固定可核验的评测环境 |
+| 优化与评测 | 策略梯度目标、降低方差的基线、可选监督约束，以及独立的任务成功率评测 |
+
+LoRA 路径可继续只更新 adapter 与 ScoreHead。用于降低方差的基线不必引入新的可训练 value head，因此最小方案不要求改变现有模型结构。推理仍可采用确定性 argmax/TopK；训练采样与部署决策需要分别评测。
+
+排序任务的动作是有序候选列表，需要定义无放回采样及整个列表的 log-probability，例如 Plackett–Luce 策略；不能将确定性 TopK 当作已采样动作。[Neural PG-RANK](https://arxiv.org/abs/2310.04407)提供了评分模型到排序策略的研究参考，其实验结果不能直接视为 Metis 的效果。离线历史日志的训练还需要行为策略概率和候选覆盖等条件，不能将监督排序损失或缺少采样记录的点击日志直接称为已实现的策略梯度训练。
+
+verl 的生成式 rollout、token log-probability 与 Metis 的候选动作接口不同。接入此类训练框架需要适配动作和反馈契约，仅添加 reward 函数不足以完成接入。当前优先保留单进程、单步候选策略的设计边界，不新增分布式 RL 依赖。
+
+## 其他扩展方向
+
+新增任务需要定义候选、标签、损失、指标与决策策略。schema linking 可使用候选列的排序或多选，工具路由可使用单选或多选。RL 还需要动作、采样、反馈及优化目标，当前没有 RL trainer。
+
+Metis 模型可作为函数或服务接入 Agent workflow，通用 LLM 与 Harness 负责规划、生成、环境交互和流程状态。工具包不包含完整 Agent runtime，也未实现分布式训练 launcher。
+
+yes/no 适配器只投影两个词表行，ScoreHead 只执行小型 MLP，均避免构造全词表 logits。当前训练使用 pair microbatch 与 gradient checkpointing；query 级损失仍保留全部候选的反向图，峰值显存受整条 query 的候选数影响。
+
+稀疏 tree 后端是待研究方向，可考虑 FlexAttention block mask，或用 log-sum-exp 合并前缀与分支的局部 softmax 统计。SDPA 接口本身不保证任意 dense mask 使用 Flash kernel；后端实现需要分别验证前向、梯度、padding、GQA、位置、dtype、dropout 和 CUDA 吞吐。
+
+## 设计参考
+
+[LlamaFactory 的框架设计](https://aclanthology.org/2024.acl-demos.38/)以模型加载、数据处理和训练模块划分职责；[HybridFlow / verl](https://arxiv.org/abs/2409.19256)将流程组织与模型执行解耦。Metis 借鉴这些边界划分，当前仍采用单进程 HF Trainer 与固定任务分支。
+
+论文图参考上述论文的职责和数据流表达，并使用 [ML Architecture Diagram](https://github.com/Ztsdut/ml-architecture-diagram-skill/tree/94b074e8f19de8b1be199343470fbd9a2b1bb3b4) 的结构核验与排版规则，由本项目独立绘制。图稿使用本地 TikZ 渲染；绘图工具不属于运行库依赖。

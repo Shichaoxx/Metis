@@ -1,0 +1,85 @@
+{
+  "schema": "metis.paper-architecture.v1",
+  "figure": {
+    "architecture_version": "1.0",
+    "view": "current toolkit architecture and lifecycle",
+    "languages": ["en", "zh"],
+    "geometry": "metis-architecture-common.tex",
+    "nominal_width_mm": 180,
+    "rendering": "local XeLaTeX; editable vector PDF and PNG preview",
+    "unresolved": []
+  },
+  "panels": [
+    {
+      "id": "a",
+      "meaning": "The scoring path is reused during training and inference. Choose exactly one model adapter.",
+      "nodes": {
+        "sample": {"role": "data", "source": "src/metis/schema.py:validate_sample", "meaning": "Query/context and candidates with stable IDs; IDs are not tokenized into the model input."},
+        "compiler": {"role": "data", "source": ["src/metis/compiler.py:QwenCompiler", "src/metis/compiler.py:ScoreHeadCompiler", "src/metis/model.py:QwenCandidateScorer._pairs", "src/metis/model.py:QwenCandidateScorer._tree"], "meaning": "Adapter-specific tokenization, logical positions, pairs or dense tree layout, eager or SDPA execution."},
+        "base": {"role": "model", "source": "src/metis/model.py:QwenScoreHead", "condition": "family == qwen3_score_head", "meaning": "Qwen3 AutoModel without an LM head."},
+        "head": {"role": "task", "source": "src/metis/model.py:QwenScoreHead._read_scores", "condition": "family == qwen3_score_head", "meaning": "Last valid relevance-suffix state, followed by independent Linear/GELU/Linear scalar head."},
+        "reranker": {"role": "model", "source": "src/metis/model.py:QwenReranker", "condition": "family == qwen3_yesno", "meaning": "Qwen3 reranker backbone."},
+        "yesno": {"role": "task", "source": "src/metis/model.py:QwenReranker._read_scores", "condition": "family == qwen3_yesno", "meaning": "Read existing LM-head yes/no rows at the last valid suffix token; subtract no logit from yes logit."},
+        "scores": {"role": "task", "source": "src/metis/model.py:QwenCandidateScorer.score_tensors", "meaning": "One raw scalar per candidate, retaining the input order and ID association."}
+      },
+      "edges": [
+        ["sample", "compiler", "forward"],
+        ["compiler", "base", "conditional_forward"],
+        ["base", "head", "forward"],
+        ["head", "scores", "conditional_forward"],
+        ["compiler", "reranker", "conditional_forward"],
+        ["reranker", "yesno", "forward"],
+        ["yesno", "scores", "conditional_forward"]
+      ],
+      "exclusive_groups": [["base", "head"], ["reranker", "yesno"]]
+    },
+    {
+      "id": "b",
+      "meaning": "Supervised learning and optional ranking validation selection; best and final are separate portable exports.",
+      "nodes": {
+        "traindata": {"role": "data", "source": "src/metis/training.py:train"},
+        "trainscorer": {"role": "model", "reuse": "a", "source": "src/metis/training.py:SupervisedReranker.forward"},
+        "objective": {"role": "task", "source": "src/metis/tasks/objectives.py:supervised_loss", "meaning": "Ranking: weighted BCE plus pairwise loss; single choice: cross entropy; multi-label: weighted BCE. Unjudged candidates are excluded from the loss."},
+        "trainer": {"role": "training", "source": "src/metis/training.py:train", "meaning": "Hugging Face Trainer; full tuning or PEFT LoRA; logs and resumable checkpoints."},
+        "devdata": {"role": "data", "source": "src/metis/training.py:_selection_data", "meaning": "Complete validation candidates and qrels; test data excluded."},
+        "selection": {"role": "training", "source": "src/metis/training.py:_complete_validation_metrics", "condition": "ranking and selection.enabled", "meaning": "At epoch boundaries, nDCG@10 selects the best checkpoint using the complete dev split."},
+        "export": {"role": "artifact", "source": ["src/metis/training.py:train", "src/metis/artifacts.py:seal_artifact"], "meaning": "Final training weights always export. The best export additionally requires enabled ranking selection. Both preserve task, tokenizer, model specification and integrity manifest."}
+      },
+      "edges": [
+        ["traindata", "trainscorer", "forward"],
+        ["traindata", "objective", "supervision"],
+        ["trainscorer", "objective", "forward"],
+        ["objective", "trainer", "loss"],
+        ["trainer", "trainscorer", "parameter_update"],
+        ["trainer", "export", "final_export"],
+        ["trainer", "selection", "validation_of_current_model"],
+        ["devdata", "selection", "validation_data"],
+        ["selection", "export", "best_export"]
+      ]
+    },
+    {
+      "id": "c",
+      "meaning": "Inference uses an exported model/task contract and unlabeled requests; only structured scores and IDs are returned.",
+      "nodes": {
+        "request": {"role": "data", "source": "src/metis/api.py:Predictor.predict", "meaning": "Schema-validated query/context and candidates; labels are not required."},
+        "artifactinput": {"role": "artifact", "reuse": "b.export"},
+        "predictor": {"role": "model", "source": ["src/metis/api.py:Predictor", "src/metis/model.py:QwenCandidateScorer.score"], "reuse": "a", "meaning": "Verify and load artifact, then evaluate in no-grad mode and restore the previous train/eval state."},
+        "decision": {"role": "task", "source": "src/metis/tasks/decisions.py:decide", "meaning": "Ranking sorts scores with optional threshold/TopK; single-choice takes the maximum with optional abstention; multi-label applies a logit threshold. Ties use stable ID order."},
+        "result": {"role": "artifact", "source": "src/metis/tasks/decisions.py:decide", "meaning": "Structured scores, ranked_ids, selected_ids and policy metadata; consumed by an external Agent or workflow."}
+      },
+      "edges": [
+        ["request", "predictor", "forward"],
+        ["artifactinput", "predictor", "load"],
+        ["predictor", "decision", "forward"],
+        ["decision", "result", "forward"]
+      ]
+    }
+  ],
+  "publication_review": {
+    "compressed": ["Token-level tensor operators and exact Qwen dimensions are covered by the separate tensor diagrams.", "Checkpoint/resume and run logging are lifecycle annotations rather than additional computational nodes.", "Artifact load metadata, batching and serialization internals are compressed into Predictor and exports."],
+    "validation_boundary": ["The real training cookbook is ranking with pairs/SDPA.", "Dense tree is a correctness reference, not a validated sparse acceleration backend.", "Ranking, single-choice and multi-label branches exist in source; quality-based full-dev selection currently supports ranking only."],
+    "not_shown_as_implemented": ["general task/objective/backend registry", "reinforcement learning", "distributed training", "probability calibration", "sparse tree kernels"],
+    "layout_references": ["https://arxiv.org/html/2403.13372v3#S4", "https://arxiv.org/html/2409.19256v2#S3"],
+    "skill_reference": "https://github.com/Ztsdut/ml-architecture-diagram-skill/blob/94b074e8f19de8b1be199343470fbd9a2b1bb3b4/SKILL.md"
+  }
+}

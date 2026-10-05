@@ -1,10 +1,10 @@
 # 参考资料与证据边界
 
-核查日期：2026-09-27。下列链接支持方法或接口说明，不代表 Metis 已实现上游的全部功能。`main` 文档可能继续变化；实际复现实验应另存模型 revision、库版本和代码 commit。
+下列资料对应 Metis 的模型读出、attention、训练和评测设计。复现实验需记录模型 revision、依赖版本与代码 commit。近期同类项目的实现比较见[相关项目](related-projects.md)（2026-10-05）。
 
 ## R0. 五道口纳什的视频与 GitHub 教学资料
 
-本项目明确参考 Bilibili 创作者 **[五道口纳什](https://space.bilibili.com/59807853)** 的 Jev / Tree Mask 视频讲解，以及 [wdkns/modern_genai_bilibili](https://github.com/wdkns/modern_genai_bilibili) 中的 [jev_architecture-v2.pdf](https://github.com/wdkns/modern_genai_bilibili/blob/6b8729b923d17863014ac6e0ff7715fc84473300/slides/jev_architecture-v2.pdf)。GitHub URL 与版本由本地 Git 验证；远端在线状态和具体视频 BV 链接本次尚未核实。
+本项目参考 Bilibili 创作者 **[五道口纳什](https://space.bilibili.com/59807853)** 的 Jev / Tree Mask 视频讲解，以及 [wdkns/modern_genai_bilibili](https://github.com/wdkns/modern_genai_bilibili) 中的 [jev_architecture-v2.pdf](https://github.com/wdkns/modern_genai_bilibili/blob/6b8729b923d17863014ac6e0ff7715fc84473300/slides/jev_architecture-v2.pdf)。课件引用固定 commit；具体视频的 BV 链接尚待补齐。
 
 对共享状态、候选分支可见性和张量化教学表达的参考应保留署名。本项目重新构造例子与图形、独立编写实现，不将借鉴思想或已有方法称为首创。该课件对 Jev 的架构分析不等于 Jev 官方披露。原课件和视频不随本项目分发；本地参考版本未发现明确许可证，署名不替代授权。完整记录见 [来源与版权说明](../../ACKNOWLEDGEMENTS.md)。
 
@@ -46,7 +46,7 @@ Hydragen 是共享前缀推理的重要参考。教程中的 logsumexp 合并公
 - [PEFT 自定义模型与 modules_to_save](https://github.com/huggingface/peft/blob/main/docs/source/developer_guides/custom_models.md)
 - [PEFT checkpoint 格式](https://github.com/huggingface/peft/blob/main/docs/source/developer_guides/checkpoint.md)
 
-Metis 使用 Trainer 作为通用生命周期基础，把候选数据、目标函数和导出约定留在任务层。非生成打分、pairwise 排序损失、LoRA 本身都已有成熟实现，不应被表述为本项目的新算法。主配方保留 yes/no vocabulary readout；后续若新增 task head，则必须同时保存其参数。
+Metis 使用 Trainer 管理训练生命周期，在任务层定义候选数据、目标函数和导出约定。非生成打分、pairwise 排序损失与 LoRA 均有既有研究和实现。当前主配方使用 Qwen3 Base + 独立 MLP ScoreHead；LoRA 产物同时保存 backbone adapter 与 head 参数。Qwen3 reranker 的 yes/no 读出作为另一适配器保留。
 
 ## R6. NFCorpus、BEIR 与评测协议
 
@@ -60,10 +60,10 @@ Metis 使用 Trainer 作为通用生命周期基础，把候选数据、目标�
 
 ## 与 Jev 资料的关系
 
-五道口纳什的视频及上述 GitHub 课件是本次讨论与教程的重要参考，涉及共享 state、树状可见性、位置重编号和结构化读出。本教程重新构造了 token 例子、图解与操作路线，没有转载原课件页面或复用其中实验数字。Jev 的黑盒行为不能唯一确定其内部网络、训练目标或 kernel；本文仅解释一个公开可实现、可测试的方案。
+五道口纳什的视频及上述 GitHub 课件为张量教程提供了共享 state、树状可见性、位置重编号和结构化读出的教学参考。教程使用独立构造的 token 例子与图解，没有转载原课件页面或复用其中实验数字。Jev 的黑盒行为不能唯一确定其内部网络、训练目标或 kernel；Metis 的代码与教程描述自身实现。
 
-## 如何复查本教程
+## 复现与验证
 
-1. 初版 PDF 与生成器仅保留在本地历史归档，保留当时接口与原始字节。当前讲解以 [张量教程](../learning/tensors.md) 和 [ScoreHead](../architecture/score-head.md) 为准。
+1. [张量教程](../learning/tensors.md)与 [ScoreHead](../architecture/score-head.md) 对应当前源码，后者包含可编辑的训练、推理图。
 2. 用 attention/model/training 测试核查 pairs/tree 对齐、梯度与导出契约。
 3. 用 NFCorpus cookbook 运行质量和性能评测；任何实际结果应带数据与模型版本，独立于教学示意数字报告。

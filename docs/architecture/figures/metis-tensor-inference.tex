@@ -1,0 +1,247 @@
+% Source: model.py::_pairs/_read_scores/score, api.py::decide,
+% compiler.py::ScoreHeadCompiler; local Qwen3-0.6B-Base/config.json.
+% Shapes: X,M,P int64[b,L]; E,H real[b,L,D]; Z real[b,D].
+% W1 stored[h,D], shown transposed[D,h]; W2 stored[1,h], shown[h,1].
+% U,A[b,h]; v[b,1]; chunk.float()[b]; cat[N] FP32, then CPU Python floats.
+% IDs/text are Python string lists, not integer index tensors.
+% Inference is eval()+no_grad(), use_cache=False: one scoring forward per
+% bounded candidate chunk, not autoregressive generation or KV-cache decoding.
+% Geometry in cm: b=.9, L=2.1, D=2.4, h=1.3, singleton=.34, N=2.7.
+% Example tiles: b=2,L=6,D=4,h=3,N=6; tiles encode axes, not actual sizes.
+% All contractions share exact edge lengths. Three b-sized chunks tile N.
+% E/H have identical L-by-D faces, one outline sheet encodes leading b.
+% Process boxes are operators, not matrix faces. IDs/text use ordered slots.
+% Connectors are on background; labels and shapes have separate lanes.
+\documentclass[tikz,border=12pt]{standalone}
+\usepackage[UTF8,fontset=fandol]{ctex}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,backgrounds}
+\definecolor{teal}{HTML}{4F8FA5}
+\definecolor{orange}{HTML}{EE995B}
+\definecolor{coral}{HTML}{C95B5B}
+\definecolor{violet}{HTML}{8A74B5}
+\definecolor{neutral}{HTML}{85898F}
+\definecolor{ink}{HTML}{303840}
+\definecolor{muted}{HTML}{626B73}
+\newcommand{\Tensor}[9]{%
+  % name,x,y,width,height,rows,columns,color,mode:
+  % 0=illustrative real values;1=binary padding mask;2=positions;3=token slots.
+  \begin{scope}[shift={(#2,#3)}]
+    \foreach \rr in {1,...,#6}{\foreach \cc in {1,...,#7}{
+      \pgfmathsetmacro{\xx}{-#4/2+(\cc-1)*#4/#7+.025}
+      \pgfmathsetmacro{\yy}{#5/2-\rr*#5/#6+.025}
+      \pgfmathsetmacro{\cw}{#4/#7-.05}
+      \pgfmathsetmacro{\ch}{#5/#6-.05}
+      \pgfmathtruncatemacro{\idx}{mod((\rr-1)*#7+\cc-1,24)}
+      \pgfmathtruncatemacro{\tone}{{55,30,80,55,80,30,55,55,30,80,80,55,80,55,30,55,30,80,55,30,80,55,55,80}[\idx]}
+      \def\celltext{}
+      \ifnum#9=1
+        \def\tone{55}\def\celltext{1}
+        \ifnum\rr=1\ifnum\cc=#7\def\tone{0}\def\celltext{0}\fi\fi
+      \fi
+      \ifnum#9=2
+        \def\tone{30}\pgfmathtruncatemacro{\pn}{\cc-1}\edef\celltext{\pn}
+      \fi
+      \ifnum#9=3
+        \def\tone{30}\def\celltext{$\tau$}
+        \ifnum\rr=1\ifnum\cc=#7\def\tone{0}\def\celltext{}\fi\fi
+      \fi
+      \path[fill=#8!\tone,rounded corners=.6pt]
+        (\xx,\yy) rectangle +(\cw,\ch);
+      \ifnum#9=2
+        \draw[black!15,line width=.3pt,rounded corners=.6pt]
+          (\xx,\yy) rectangle +(\cw,\ch);
+      \fi
+      \node[font=\scriptsize,inner sep=0pt,text=ink]
+        at (\xx+\cw/2,\yy+\ch/2) {\celltext};
+    }}
+    \draw[black!55,line width=.55pt]
+      (-#4/2+.03,#5/2+.08)--(-#4/2-.08,#5/2+.08)
+      --(-#4/2-.08,-#5/2-.08)--(-#4/2+.03,-#5/2-.08);
+    \draw[black!55,line width=.55pt]
+      (#4/2-.03,#5/2+.08)--(#4/2+.08,#5/2+.08)
+      --(#4/2+.08,-#5/2-.08)--(#4/2-.03,-#5/2-.08);
+  \end{scope}
+  \coordinate (#1) at (#2,#3);
+  \coordinate (#1-west) at (#2-#4/2-.08,#3);
+  \coordinate (#1-east) at (#2+#4/2+.08,#3);
+  \coordinate (#1-north) at (#2,#3+#5/2+.08);
+  \coordinate (#1-south) at (#2,#3-#5/2-.08);
+}
+\newcommand{\Hidden}[3]{%
+  \draw[black!25,line width=.55pt,fill=white]
+    (#2-1.2+.22,#3-1.05+.22) rectangle (#2+1.2+.22,#3+1.05+.22);
+  \Tensor{#1}{#2}{#3}{2.4}{2.1}{6}{4}{violet}{0}
+  \coordinate (#1-east) at (#2+1.2+.22,#3);
+}
+\newcommand{\TensorLabel}[5]{%
+  \node[font=\small] at (#2,#3) {$#4$};
+  \node[font=\scriptsize,text=muted] at (#2,#3-.46) {$#5$};
+}
+% Align the color square to the current CJK glyph's vertical center.
+% Fixed negative TikZ baselines raise the square above the adjacent text.
+\newsavebox{\LegendGlyph}
+\newcommand{\Swatch}[1]{%
+  \begingroup
+  \sbox{\LegendGlyph}{青}%
+  \raisebox{\dimexpr(\ht\LegendGlyph-\dp\LegendGlyph-7pt)/2\relax}{%
+    \tikz[x=1pt,y=1pt,baseline=0pt]{%
+      \path[use as bounding box] (0,0) rectangle (7,7);
+      \path[fill=#1!70,draw=black!25,line width=.3pt,rounded corners=.5pt]
+        (.15,.15) rectangle (6.85,6.85);}}%
+  \endgroup\nobreak\hspace{.35em}}
+\begin{document}
+\begin{tikzpicture}[x=1cm,y=1cm,every node/.style={text=ink},
+  stage/.style={font=\small\bfseries,text=muted,align=center},
+  op/.style={draw=black!35,fill=white,rounded corners=2pt,line width=.55pt,
+    align=center,font=\small,inner sep=7pt},
+  edge/.style={-{Stealth[length=2.5mm,width=1.7mm]},draw=black!55,line width=.7pt},
+  aux/.style={edge,draw=teal!80},
+  note/.style={font=\scriptsize,text=muted,align=center},
+  algebra/.style={font=\Large}]
+
+% Formula zone: concrete shared scorer and discrete string-ID lookup.
+\node[font=\large] at (12.8,6.1) {
+  $H=f_{\theta_0,\Delta\theta}(X,M,P),\quad
+    Z_j=H[j,\ell_j-1,:],\quad
+    \mathbf{s}=\operatorname{cat}\bigl(\operatorname{squeeze}_{-1}(\operatorname{MLP}_{\phi}(Z))\bigr)$};
+\node[font=\large] at (12.8,5.12) {
+  $\mathrm{selected\_ids}=(\mathrm{id}_{(1)},\ldots,\mathrm{id}_{(k)}),\quad
+    c_{(r)}=\mathrm{documents}[\mathrm{id}_{(r)}]$};
+
+% Row 1: real model architecture, with separate mask/position tensor inputs.
+\Tensor{mask}{0}{3.65}{2.1}{.9}{2}{6}{teal}{1}
+\Tensor{pos}{4}{3.65}{2.1}{.9}{2}{6}{neutral}{2}
+\TensorLabel{mask}{0}{2.83}{M}{[b,L]\;\mathrm{int64}}
+\TensorLabel{pos}{4}{2.83}{P}{[b,L]\;\mathrm{int64}}
+\node[stage] at (16.8,3.65) {架构与前向 · pairs / SDPA · eval + no\_grad};
+\Tensor{tokens}{0}{0}{2.1}{.9}{2}{6}{teal}{3}
+\TensorLabel{tokens}{0}{-.88}{X}{[b,L]\;\mathrm{int64}}
+\node[op,minimum width=1.8cm,minimum height=1.05cm] (embed) at (3.65,0)
+  {Embedding};
+\Hidden{emb}{7}{0}
+\TensorLabel{emb}{7}{-1.58}{E}{[b,L,D]}
+\node[op,font=\scriptsize,minimum width=4.4cm,minimum height=2.7cm,text width=3.95cm] (decoder) at (12.45,0) {
+  \begin{tabular}{@{}c@{}}
+  {\small\bfseries Qwen3 Decoder $\times28$}\\[6pt]
+  $Q:[b,16,L,128]$\\
+  $K,V:[b,8,L,128]$\\[4pt]
+  Q/K Norm + RoPE + GQA\\
+  causal SDPA / RMSNorm / 残差\\
+  SwiGLU：$D\to3072\to D$
+  \end{tabular}};
+\node[note] at (12.45,-2.08) {加载 Base + LoRA；最终 RMSNorm};
+\Hidden{hidden}{18.4}{0}
+\TensorLabel{hidden}{18.4}{-1.58}{H}{[b,L,D]}
+\node[op,minimum width=2.2cm,minimum height=1.12cm] (gather) at (22,0)
+  {Gather\\$j,\ell_j-1$};
+\Tensor{readout}{25.5}{0}{2.4}{.9}{2}{4}{violet}{0}
+\TensorLabel{readout}{25.5}{-.88}{Z}{[b,D]}
+\node[note] at (22,-1.08) {末有效 relevance token};
+
+% Row 2: contracted dimensions drawn with identical edge lengths.
+\node[stage] at (12.8,-3.42) {独立 ScoreHead · Linear $\to$ GELU $\to$ Linear};
+\Tensor{z}{0}{-5.85}{2.4}{.9}{2}{4}{violet}{0}
+\TensorLabel{z}{0}{-6.73}{Z}{[b,D]}
+\node[algebra] at (2.05,-5.85) {$\times$};
+\Tensor{wone}{4}{-5.85}{1.3}{2.4}{4}{3}{orange}{0}
+\TensorLabel{wone}{4}{-7.48}{W_1^{\mathsf T}}{[D,h]}
+\node[note] at (6.13,-5.03) {$+b_1$\quad 广播到候选行};
+\Tensor{pre}{8.2}{-5.85}{1.3}{.9}{2}{3}{violet}{0}
+\TensorLabel{pre}{8.2}{-6.73}{U}{[b,h]}
+\node[op,minimum width=1.3cm,minimum height=.85cm] (gelu) at (10.6,-5.85) {GELU};
+\Tensor{act}{13}{-5.85}{1.3}{.9}{2}{3}{violet}{0}
+\TensorLabel{act}{13}{-6.73}{A}{[b,h]}
+\node[algebra] at (14.84,-5.85) {$\times$};
+\Tensor{wtwo}{16.4}{-5.85}{.34}{1.3}{3}{1}{orange}{0}
+\TensorLabel{wtwo}{16.4}{-6.93}{W_2^{\mathsf T}}{[h,1]}
+\node[note] at (18.14,-5.03) {$+b_2$};
+\Tensor{v}{19.45}{-5.85}{.34}{.9}{2}{1}{coral}{0}
+\TensorLabel{v}{19.45}{-6.73}{v}{[b,1]}
+\node[op,minimum width=2.15cm,minimum height=1.08cm] (squeeze) at (22.2,-5.85)
+  {squeeze($-1$)\\float32};
+\Tensor{chunk}{25.5}{-5.85}{.34}{.9}{2}{1}{coral}{0}
+\TensorLabel{chunk}{25.5}{-6.73}{\mathbf{s}_{\mathrm{chunk}}}{[b]\;\mathrm{FP32}}
+
+% Row 3: tensor to Python values, stable IDs and text. No fake index tensor.
+\node[op,minimum width=2.9cm,minimum height=.72cm] (concat) at (20,-8.72)
+  {cat 全部候选微批};
+\node[stage] at (12.8,-10.05) {分数到候选内容 · 单个 query 的全量候选};
+\Tensor{all}{0}{-12.18}{.34}{2.7}{6}{1}{coral}{0}
+\TensorLabel{all}{0}{-13.96}{\mathbf{s}}{[N]\;\mathrm{FP32}}
+\node[op,minimum width=3.7cm,minimum height=1.36cm,text width=3.2cm] (cpu) at (5.6,-12.18) {
+  \textbf{Python 分数列表}\\[5pt]
+  \texttt{cpu().tolist()}\\
+  $(s_1,\ldots,s_N)$};
+\node[op,minimum width=3.6cm,minimum height=1.35cm,text width=3.2cm] (sort) at (11.8,-12.18) {
+  \textbf{排序 / TopK}\\[5pt]
+  key $=(-s,\mathrm{id})$\\
+  分数降序，同分按 ID};
+\node[op,minimum width=4.6cm,minimum height=.95cm,text width=4.0cm] (ids) at (11.8,-14.68)
+  {输入候选 ID：$(\mathrm{id}_1,\ldots,\mathrm{id}_N)$\\
+   \scriptsize 稳定字符串；不进入模型文本};
+
+\foreach \rr/\txt in {0/1,1/{\vdots},2/k}{
+  \node[draw=black!25,fill=neutral!6,line width=.4pt,rounded corners=1pt,
+    minimum width=2.9cm,minimum height=.5cm,inner sep=1pt,font=\small]
+    at (17.9,-11.63-.55*\rr) {\ifnum\rr=1 $\vdots$\else$\mathrm{id}_{(\txt)}$\fi};
+}
+\coordinate (selected-west) at (16.45,-12.18);
+\coordinate (selected-east) at (19.35,-12.18);
+\node[font=\small] at (17.9,-13.4) {\texttt{selected\_ids}};
+\node[note] at (17.9,-13.87) {字符串列表 · 长度 $k$};
+\node[op,minimum width=1.8cm,minimum height=1.08cm] (lookup) at (21.72,-12.18)
+  {按 ID\\查表};
+\foreach \rr/\txt in {0/1,1/{\vdots},2/k}{
+  \node[draw=black!25,fill=neutral!6,line width=.4pt,rounded corners=1pt,
+    minimum width=3.05cm,minimum height=.5cm,inner sep=1pt,font=\small]
+    at (25.5,-11.63-.55*\rr) {\ifnum\rr=1 $\vdots$\else$c_{(\txt)}$ 候选文本\fi};
+}
+\coordinate (contents-west) at (23.975,-12.18);
+\node[font=\small] at (25.5,-13.4) {$\mathcal C=(c_{(1)},\ldots,c_{(k)})$};
+\node[note] at (25.5,-13.87) {Agent / Workflow 证据上下文};
+
+\begin{scope}[on background layer]
+  \draw[edge] (tokens-east)--(embed.west);
+  \draw[edge] (embed.east)--(emb-west);
+  \draw[edge] (emb-east)--(decoder.west);
+  \draw[edge] (decoder.east)--(hidden-west);
+  \draw[edge] (hidden-east)--(gather.west);
+  \draw[edge] (gather.east)--(readout-west);
+  \draw[edge] (readout-east)--(28.5,0)--(28.5,-2.75)--(0,-2.75)--(z-north);
+  \draw[aux] (mask-east)--(2.0,3.65)--(2.0,1.95)--(11.55,1.95)--($(decoder.north)+(-.9,0)$);
+  \draw[aux] (pos-east)--(6.0,3.65)--(6.0,2.48)--(13.35,2.48)--($(decoder.north)+(.9,0)$);
+  \draw[edge] (wone-east)--(pre-west);
+  \draw[edge] (pre-east)--(gelu.west);
+  \draw[edge] (gelu.east)--(act-west);
+  \draw[edge] (wtwo-east)--(v-west);
+  \draw[edge] (v-east)--(squeeze.west);
+  \draw[edge] (squeeze.east)--(chunk-west);
+  \draw[edge] (chunk-east)--(28.5,-5.85)--(28.5,-8.72)--(concat.east);
+  \draw[edge] (concat.west)--(0,-8.72)--(all-north);
+  \draw[edge] (all-east)--(cpu.west);
+  \draw[edge] (cpu.east)--(sort.west);
+  \draw[edge] (ids.north)--(sort.south);
+  \draw[edge] (sort.east)--(selected-west);
+  \draw[edge] (selected-east)--(lookup.west);
+  \draw[edge] (lookup.east)--(contents-west);
+\end{scope}
+
+% Meaning zone; diagram is a real first-recipe forward, not a generic registry.
+\node[draw=black!18,fill=neutral!6,rounded corners=2pt,
+  text width=28.3cm,align=left,inner sep=10pt,anchor=north west,
+  font=\small] (meaning) at (-1.35,-16.0) {
+  \begin{tabular}{@{}p{.65cm}p{26.8cm}@{}}
+  \textbf{轴} & $b\le4$：候选微批；$N$：一个 query 的全部候选；$L\le2048$；首轮 $D=1024,h=256$。色块仅示意轴，非实际维数。\\[.5em]
+  \textbf{对象} & \Swatch{teal}青：token IDs $X$、0/1 padding 支持 $M$；
+    \Swatch{violet}紫：隐藏激活 $E,H,Z,U,A$；
+    \Swatch{orange}橙：Head 参数 $W_1,b_1,W_2,b_2$；
+    \Swatch{coral}红：raw logits $v,\mathbf{s}$；
+    \Swatch{neutral}灰：整数位置 $P$、字符串 ID / 文本列表（不是数值张量）。\\[.5em]
+  \textbf{机制} & $M$ 的白格为 padding（$0$）；其它色块深浅仅作示意，不对应实测值。推理无梯度、无 KV cache；无阈值且 $\mathrm{top\_k}>0$ 时 $k=\min(\mathrm{top\_k},N)$，按 ID 查原文本。
+  \end{tabular}};
+\node[font=\scriptsize,text=neutral,anchor=north] at ($(meaning.south)+(0,-.38)$)
+  {Metis 推理张量与候选选择 · shichao};
+\end{tikzpicture}
+\end{document}

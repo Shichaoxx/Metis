@@ -1,12 +1,12 @@
 # 示例与实验入口
 
-示例展示如何使用工具包；可复用实现位于 `src/metis/`。以下按用途导航，保留现有脚本路径以兼容测试 fixture 和历史命令。
+示例展示如何训练、评测和调用模型；可复用实现位于 `src/metis/`。
 
 ## 了解训练与工具调用
 
 | 入口 | 用途与边界 |
 |---|---|
-| [smoke_train.py](smoke_train.py) | 本地随机 tiny Qwen3 的 CPU 训练、导出与重载；无需下载，验证软件闭环 |
+| [smoke_train.py](smoke_train.py) | 本地随机 tiny Qwen3 的 CPU 训练、导出与重载；无需下载权重 |
 | [agent_tool.py](agent_tool.py) | 将封存产物包装为结构化候选评分工具；`--show-schema` 只打印契约，不加载模型 |
 | [nfcorpus_workflow.py](nfcorpus_workflow.py) | 在固定 validation 样本上调用产物，按返回 ID 组装证据上下文；不调用通用 LLM |
 
@@ -30,6 +30,6 @@ tiny 示例与列选择合成示例不代表真实任务质量。NFCorpus 排序
 | [compare_results.py](benchmarks/compare_results.py) | 读取既有报告，执行同协议比较与配对 bootstrap |
 | [compare_task_models.py](benchmarks/compare_task_models.py) | 比较不同读出/模板的完整方法，显式核对公共协议 |
 
-真实模型脚本需要已准备的权重、manifest 或产物，不属于日常软件测试。部分历史脚本默认 `test` 或特定设备，执行前查看 `--help` 并显式选择协议允许的 split 和设备；日常开发不要沿用默认值重跑已完成的 test。
+真实模型脚本需要已准备的权重、manifest 或产物。部分脚本默认使用 `test` 或特定设备；运行时应显式指定 split 和设备，开发调试使用 validation，test 保留给固定方案的最终评测。
 
-首轮已执行协议见 [ScoreHead cookbook](../cookbooks/score-head-plan.md)，现有结果见 [项目进度](../docs/project/status.md)。新的实验使用独立输出目录，先核对资源与运行状态；报告比较脚本只读取已有结果，不代表完成了新的模型评测。
+实验协议见 [ScoreHead cookbook](../cookbooks/score-head-plan.md)，结果见 [项目状态](../docs/project/status.md)。每次实验使用独立输出目录；报告比较脚本读取已有结果，不执行模型推理。

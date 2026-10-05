@@ -1,6 +1,8 @@
 import copy
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -79,6 +81,21 @@ class SchemaTests(unittest.TestCase):
 
 
 class MetricTests(unittest.TestCase):
+    def test_task_decisions_preserve_candidate_identity_and_policy(self):
+        from metis.tasks import decide as task_decide
+
+        self.assertIs(decide, task_decide)
+        value = sample()
+        value["candidates"].reverse()
+        # Equal scores use stable IDs, independently of input ordering.
+        ranked = task_decide(value, [0.0, 0.0], top_k=1)
+        self.assertEqual(ranked["ranked_ids"], ["a", "b"])
+        self.assertEqual(ranked["selected_ids"], ["a"])
+        self.assertEqual([row["candidate_id"] for row in ranked["scores"]], ["b", "a"])
+        self.assertEqual(task_decide(value, [0.0, 0.0], task_kind="single_choice")["selected_ids"], ["a"])
+        self.assertEqual(task_decide(value, [0.0, 0.0], task_kind="multi_label")["selected_ids"], ["a", "b"])
+        self.assertTrue(task_decide(value, [0.0, 0.0], task_kind="single_choice", min_score=1.0)["abstained"])
+
     def test_full_qrels_recall_and_map(self):
         m = ranking_metrics(["a", "b"], [2, 1], {"a": 1, "missing": 1}, k=1)
         self.assertEqual(m["recall@1"], 0.5)
@@ -101,6 +118,29 @@ class MetricTests(unittest.TestCase):
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_core_and_task_imports_do_not_require_model_dependencies(self):
+        source = Path(__file__).resolve().parents[1] / "src"
+        script = '''
+import importlib.abc
+import sys
+
+class RejectModelDependencies(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".")[0] in {"torch", "transformers", "accelerate", "peft"}:
+            raise AssertionError(f"Core import loaded optional dependency: {fullname}")
+
+sys.meta_path.insert(0, RejectModelDependencies())
+sys.path.insert(0, sys.argv[1])
+from metis import Predictor
+from metis.api import decide as legacy_decide
+from metis.tasks import decide
+assert decide is legacy_decide
+assert "metis.tasks.objectives" not in sys.modules
+'''
+        result = subprocess.run([sys.executable, "-I", "-c", script, str(source)],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_documented_top_level_predictor_import(self):
         from metis import Predictor
         from metis.api import Predictor as Implementation
@@ -111,6 +151,11 @@ class ArtifactTests(unittest.TestCase):
             root = Path(temp)
             left = create_run(root, "toy", {}); right = create_run(root, "toy", {})
             self.assertNotEqual(left, right)
+            from metis.tasks import decisions
+            recorded_sources = json.loads((left / "source.sha256.json").read_text())
+            self.assertEqual(recorded_sources["tasks/decisions.py"], sha256(decisions.__file__))
+            self.assertIn("tasks/objectives.py", recorded_sources)
+            self.assertIn("tasks/__init__.py", recorded_sources)
             export = left / "exports/model"; export.mkdir(parents=True)
             (export / "weights.bin").write_bytes(b"toy-weights-not-a-model")
             seal_artifact(export)
