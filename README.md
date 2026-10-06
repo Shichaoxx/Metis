@@ -73,6 +73,8 @@ The first cookbook covers two training epochs, model selection on the complete d
 
 The ScoreHead configuration scored below the original reranker. The models differ in readout, input templates and training history, so this is a comparison of complete methods, not an ablation. See the [evaluation protocol](cookbooks/score-head-plan.md) for data and measurement details.
 
+Separate BoolQ studies compare [gated/residual heads](cookbooks/boolq-readout-ablation.md) and [readout positions/attention pooling](cookbooks/boolq-readout-selection.md). Neither study has established a reliable gain over simple baselines; the v1 architecture remains unchanged.
+
 ## Documentation
 
 Most detailed documentation is currently in Chinese.

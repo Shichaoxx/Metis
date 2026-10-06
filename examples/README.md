@@ -33,3 +33,9 @@ tiny 示例与列选择合成示例不代表真实任务质量。NFCorpus 排序
 真实模型脚本需要已准备的权重、manifest 或产物。部分脚本默认使用 `test` 或特定设备；运行时应显式指定 split 和设备，开发调试使用 validation，test 保留给固定方案的最终评测。
 
 实验协议见 [ScoreHead cookbook](../cookbooks/score-head-plan.md)，结果见 [项目状态](../docs/project/status.md)。每次实验使用独立输出目录；报告比较脚本读取已有结果，不执行模型推理。
+
+## 读出结构研究
+
+[BoolQ 消融协议](../cookbooks/boolq-readout-ablation.md)使用真实二元判断数据，分别比较冻结表示与联合 LoRA 的评分头。研究脚本位于 [research/](research/)，保存格式独立于 v1 Predictor；数据、缓存、权重与原始结果写入本地运行目录。
+
+[读出位置与池化实验](../cookbooks/boolq-readout-selection.md)使用共同正文预算，比较两个末尾标记与候选注意力池化。[协议准备](research/prepare_boolq_readout_protocol.py)固定数据与九组训练；[训练入口](research/train_boolq_readout.py)在全部开发集选优冻结后才允许最终评测。[汇总工具](research/summarize_boolq_readout.py)核验已有产物与预测，重算指标及配对区间，不执行模型推理。

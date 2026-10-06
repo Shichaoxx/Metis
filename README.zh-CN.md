@@ -73,6 +73,8 @@ results = predictor.predict(samples, top_k=5)
 
 本轮训练结果低于原始 reranker。两者模板、读出和训练历史不同，属于完整方法对照；完整协议与结果见 [NFCorpus cookbook](cookbooks/score-head-plan.md)。
 
+BoolQ 独立研究比较了[门控与残差评分头](cookbooks/boolq-readout-ablation.md)、[读出位置与注意力池化](cookbooks/boolq-readout-selection.md)。两轮均未建立超越简单基线的稳定收益，v1 架构保持不变。
+
 ## 文档
 
 [使用指南](docs/usage/getting-started.md) · [示例](examples/README.md) · [项目状态](docs/project/status.md) · [贡献指南](CONTRIBUTING.md)

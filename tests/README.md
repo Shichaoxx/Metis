@@ -15,6 +15,13 @@
 | [test_retrieval.py](test_retrieval.py) | pooling 与替身 embedding 的固定检索结果 |
 | [test_task_model_reports.py](test_task_model_reports.py) | 无模型推理的评测协议、报告比较与拒绝条件 |
 | [test_artifact_evaluator_integration.py](test_artifact_evaluator_integration.py) | tiny ScoreHead 真实前向、完整 qrels、续评幂等和篡改拒绝 |
+| [test_readout_ablation.py](test_readout_ablation.py) | 冻结表示研究的真实优化、dev 选优、指标与研究头重载 |
+| [test_boolq_feature_protocol.py](test_boolq_feature_protocol.py) | 研究数据的 passage 隔离与不依赖标签的固定抽样 |
+| [test_boolq_lora_ablation.py](test_boolq_lora_ablation.py) | 联合 LoRA 研究的梯度、参数更新、基座冻结与独立格式重载 |
+| [test_boolq_readout_protocol.py](test_boolq_readout_protocol.py) | 第二轮研究的标签盲采样、历史样本排除和冻结协议 |
+| [test_boolq_readout_model.py](test_boolq_readout_model.py) | 批处理隔离、共同正文预算、token 边界与候选池化 mask |
+| [test_boolq_readout_training.py](test_boolq_readout_training.py) | 真实 tiny LoRA 更新、选定模型重载与全部选优冻结后评测 |
+| [test_boolq_readout_summary.py](test_boolq_readout_summary.py) | 完整证据校验、开发集选择、预测指标重算与配对区间 |
 
 模型相关测试在缺少可选依赖时可能跳过，测试报告应注明跳过项。测试产物写入临时目录；回归测试使用独立 fixture，不依赖外部训练 run 或真实留出数据。
 
