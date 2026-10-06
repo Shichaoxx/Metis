@@ -71,9 +71,45 @@ class TaskReportTests(unittest.TestCase):
         self.assertTrue(result['selection_allowed'])
 
     def test_legacy_source_hash_field_compatible_with_metis(self):
-        a, b = self.pair(source_key='cometa_source_sha256')
+        a, b = self.pair(source_key='legacy_toolkit_source_sha256')
         result = comparison.compare(a, b)
         self.assertAlmostEqual(result['ndcg@10_paired_bootstrap']['mean_delta'], 0.0)
+
+    def change_contract(self, directory, transform):
+        contract = json.loads((directory / 'protocol.json').read_text())
+        transform(contract)
+        write_json(directory / 'protocol.json', contract)
+        evaluation = json.loads((directory / 'evaluation.json').read_text())
+        evaluation['protocol_sha256'] = comparison.digest_json(contract)
+        write_json(directory / 'evaluation.json', evaluation)
+
+    def test_ambiguous_prior_source_metadata_is_rejected(self):
+        a, b = self.pair(source_key='legacy_toolkit_source_sha256')
+        self.change_contract(b, lambda contract: contract.update(
+            another_toolkit_source_sha256={'metrics.py': 'd' * 64}))
+        with self.assertRaisesRegex(ValueError, 'unique source hash metadata'):
+            comparison.compare(a, b)
+
+    def test_current_source_metadata_takes_priority(self):
+        a, b = self.pair()
+        self.change_contract(b, lambda contract: contract.update(
+            legacy_toolkit_source_sha256={'metrics.py': 'f' * 64},
+            another_toolkit_source_sha256={'metrics.py': 'e' * 64}))
+        self.assertAlmostEqual(comparison.compare(a, b)['ndcg@10_paired_bootstrap']['mean_delta'], 0.0)
+
+    def test_invalid_current_source_metadata_does_not_fall_back(self):
+        _, b = self.pair()
+        self.change_contract(b, lambda contract: contract.update(
+            metis_source_sha256=None, legacy_toolkit_source_sha256={'metrics.py': 'd' * 64}))
+        with self.assertRaisesRegex(ValueError, 'Source hash metadata must be a dictionary'):
+            comparison.read_evaluation(b)
+
+    def test_prior_source_metadata_still_requires_a_valid_metric_hash(self):
+        _, b = self.pair(source_key='legacy_toolkit_source_sha256')
+        self.change_contract(b, lambda contract: contract['legacy_toolkit_source_sha256'].update(
+            {'metrics.py': 'not-a-hash'}))
+        with self.assertRaisesRegex(ValueError, 'Missing/invalid SHA-256'):
+            comparison.read_evaluation(b)
 
     def test_both_pilots_remain_pilots(self):
         a, b = self.root / 'a', self.root / 'b'

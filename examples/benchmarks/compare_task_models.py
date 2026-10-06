@@ -31,6 +31,22 @@ def require_hash(value, name):
     return value
 
 
+def source_hash_metadata(contract):
+    """Use current source identity, or exactly one compatible metadata field."""
+    if 'metis_source_sha256' in contract:
+        hashes = contract['metis_source_sha256']
+    else:
+        candidates = [value for name, value in contract.items()
+                      if isinstance(name, str) and name.endswith('_source_sha256')
+                      and isinstance(value, dict) and 'metrics.py' in value]
+        if len(candidates) != 1:
+            raise ValueError('Need unique source hash metadata containing metrics.py')
+        hashes = candidates[0]
+    if not isinstance(hashes, dict):
+        raise ValueError('Source hash metadata must be a dictionary')
+    return hashes
+
+
 def read_evaluation(directory):
     root = Path(directory).expanduser().resolve()
     names = ("evaluation.json", "protocol.json", "metrics.json", "predictions.jsonl")
@@ -75,7 +91,7 @@ def read_evaluation(directory):
         raise ValueError("Comparison requires explicit linear/TREC nDCG@10")
     if evaluation.get("candidate_policy") != "frozen_manifest_candidates_no_gold_injection":
         raise ValueError("Held-out candidate set must be frozen and have no gold injection")
-    source_hashes = contract.get("metis_source_sha256", contract.get("cometa_source_sha256", {}))
+    source_hashes = source_hash_metadata(contract)
     metric_source = source_hashes.get("metrics.py")
     require_hash(metric_source, "metis metrics.py source")
     definition = evaluation.get("metric_definition")

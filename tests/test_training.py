@@ -8,12 +8,33 @@ torch = pytest.importorskip('torch')
 pytest.importorskip('transformers')
 pytest.importorskip('accelerate')
 from metis.training import (train, supervised_loss, _sample_training_candidates,
-                             _selection_data, _complete_validation_metrics)
+                             _selection_data, _complete_validation_metrics, _resume_metadata_paths)
 from metis.model import QwenReranker
 
 fixture_spec = importlib.util.spec_from_file_location('training_fixture', Path(__file__).parents[1] / 'examples/smoke_train.py')
 fixture = importlib.util.module_from_spec(fixture_spec)
 fixture_spec.loader.exec_module(fixture)
+
+
+def test_resume_metadata_accepts_unknown_prefix_but_prefers_current_metadata(tmp_path):
+    prior = tmp_path / 'legacy_toolkit_resume.json'
+    prior.write_text('{}')
+    resume, selection = _resume_metadata_paths(tmp_path)
+    assert resume == prior
+    assert selection == tmp_path / 'legacy_toolkit_selection.json'
+    # A selection file from another prefix is never mixed with this resume.
+    (tmp_path / 'metis_selection.json').write_text('{}')
+    assert not selection.is_file()
+    current = tmp_path / 'metis_resume.json'
+    current.write_text('{}')
+    assert _resume_metadata_paths(tmp_path) == (current, tmp_path / 'metis_selection.json')
+
+
+def test_resume_metadata_rejects_ambiguous_prior_prefixes(tmp_path):
+    for prefix in ('legacy_toolkit', 'another_toolkit'):
+        (tmp_path / f'{prefix}_resume.json').write_text('{}')
+    with pytest.raises(ValueError, match='ambiguous resume metadata'):
+        _resume_metadata_paths(tmp_path)
 
 
 def test_graded_labels_and_unknowns():
@@ -86,7 +107,7 @@ def test_real_trainer_export_and_exact_resume(tmp_path, tuning, legacy_names):
     assert any(row['event'] == 'trainer_log' and 'loss' in row['metrics'] for row in logs)
     restored_cfg = copy.deepcopy(config)
     if legacy_names:
-        (checkpoint / 'metis_resume.json').rename(checkpoint / 'cometa_resume.json')
+        (checkpoint / 'metis_resume.json').rename(checkpoint / 'legacy_toolkit_resume.json')
     restored_cfg['training']['resume_from_checkpoint'] = str(checkpoint)
     resumed = train(restored_cfg, tmp_path / 'resumed')
     left, right = QwenReranker.load(trained), QwenReranker.load(resumed)
@@ -269,7 +290,7 @@ def test_score_head_lora_training_selects_full_dev_best_and_resumes(tmp_path, le
     restored = copy.deepcopy(config)
     if legacy_names:
         for name in ('resume', 'selection'):
-            (checkpoint / f'metis_{name}.json').rename(checkpoint / f'cometa_{name}.json')
+            (checkpoint / f'metis_{name}.json').rename(checkpoint / f'legacy_toolkit_{name}.json')
     restored['training']['resume_from_checkpoint'] = str(checkpoint)
     resumed = train(restored, tmp_path / 'resumed')
     resumed_final = load_model(tmp_path / 'resumed/exports/final')

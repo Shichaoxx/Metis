@@ -11,9 +11,9 @@ import zipfile
 
 
 PRIVATE_ROOTS = {
-    "data", "runs", "reports", "artifacts", "logs", "ops", ".local",
-    ".git", ".codex", ".agents", ".metis", ".cometa", ".venv", "venv",
+    "data", "runs", "reports", "artifacts", "logs", "ops", "venv",
 }
+PUBLIC_DOT_ROOTS = {".github", ".gitignore", ".gitattributes", ".editorconfig", ".env.example"}
 PRIVATE_ENTRIES = {"AGENTS.md", "CORE.md", "HANDOFF.md", "JUPITER.md"}
 CACHE_DIRS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
 REQUIRED_MODULES = {"metis/__init__.py", "metis/tasks/objectives.py", "metis/tasks/decisions.py"}
@@ -34,6 +34,7 @@ def excluded(parts: tuple[str, ...]) -> bool:
         return False
     return (
         parts[0] in PRIVATE_ROOTS
+        or (parts[0].startswith(".") and parts[0] not in PUBLIC_DOT_ROOTS)
         or (len(parts) == 1 and parts[0] in PRIVATE_ENTRIES)
         or parts[:2] in {("docs", "operations"), ("docs", "history")}
         or any(p in CACHE_DIRS or p == ".env" or p.startswith(".env.") for p in parts)

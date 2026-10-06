@@ -20,14 +20,8 @@ prune runs
 prune reports
 prune artifacts
 prune logs
-prune .local
-prune .metis
-prune .cometa
-prune .git
-prune .agents
-prune .codex
+prune .*
 prune ops
-prune .venv
 prune build
 prune dist
 exclude workspace.local.json

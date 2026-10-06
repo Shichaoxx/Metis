@@ -68,6 +68,19 @@ class DistributionTests(unittest.TestCase):
                     errors = distribution.check_distribution(make({name: b"local-only"}))
                     self.assertTrue(any(name in error and "local-only" in error for error in errors), errors)
 
+    def test_public_dot_roots_are_allowed_but_unknown_local_roots_are_rejected(self):
+        public = ['.github/workflows/tests.yml', '.gitignore', '.gitattributes', '.editorconfig']
+        private = ['.legacy_toolkit/state.json', '.unknown_local/state.json',
+                   '.metis/registry.json', '.env.example']
+        for make in (self.wheel, self.sdist):
+            for name in public:
+                with self.subTest(format=make.__name__, member=name):
+                    self.assertEqual(distribution.check_distribution(make({name: b'public configuration'})), [])
+            for name in private:
+                with self.subTest(format=make.__name__, member=name):
+                    errors = distribution.check_distribution(make({name: b'local-only'}))
+                    self.assertTrue(any(name in error and 'local-only' in error for error in errors), errors)
+
     def test_required_task_modules_and_sdist_metadata_are_checked(self):
         for module in distribution.REQUIRED_MODULES:
             self.assertTrue(any("missing required" in e and module in e
