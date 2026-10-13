@@ -10,3 +10,5 @@
 架构实验：[BoolQ 读出结构消融](boolq-readout-ablation.md)，分别验证冻结表示的评分头与联合 LoRA 训练。
 
 [BoolQ 读出位置与池化](boolq-readout-selection.md)固定同一 MLP，比较末尾标记与候选正文注意力池化；三个训练种子使用新的预留评测子集。
+
+[BoolQ 小训练集拟合诊断](boolq-training-diagnostic.md)检查现有 Base + MLP + LoRA 能否拟合 32 条平衡训练样本；两档学习率均达到预定条件，结果仅说明小子集可拟合。

@@ -59,6 +59,8 @@ Best/final 分开导出；重载 150 个候选的最大分数差为 0。Workflow
 
 两轮研究不改变 v1 模型、冻结 NFCorpus 配方或原实验产物，也不计为 RL 或完整 BoolQ 基准。开源决策模型常用任务与训练方式见 [Jev 风格任务调研](../research/jev-task-survey.md)。
 
+2026-10-09 完成[小训练集拟合诊断](../../cookbooks/boolq-training-diagnostic.md)：在 32 条无截断、正负平衡的训练记录上，现有 Base + MLP + LoRA 的两档学习率分别在 100 与 60 次更新后达到预定停止条件，训练 accuracy 均为 100%。两臂初始化相同，head/LoRA 均更新、冻结基座不变，独立进程重载参考 logits 差为 0。该结果说明小子集可以被拟合，不是开发集或未见评测收益，也不能将此前全肯定预测单独归因于评分头。
+
 ## 待完成
 
 通用 task/objective/backend 注册、单选/多选的完整评测与选优、概率校准、更多 backbone、稀疏 attention、RL、多卡、真实训练布局消融，以及第二个任务的工具包完整闭环。Tree 仅有小规模分数、梯度与候选换序正确性预检，尚未验证训练质量或加速。BoolQ 已有多种子联合 LoRA 研究，仍需建立超越简单基线的任务质量。相关实现与扩展方向见[项目对照](../research/related-projects.md)。
